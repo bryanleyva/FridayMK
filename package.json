@@ -1,0 +1,34 @@
+{
+  "name": "lishing-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "cloudinary": "^2.8.0",
+    "exceljs": "^4.4.0",
+    "google-auth-library": "^10.6.2",
+    "google-spreadsheet": "^5.2.0",
+    "googleapis": "^169.0.0",
+    "next": "^16.1.3",
+    "next-auth": "4.24.13",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "sweetalert2": "^11.26.17",
+    "vercel": "^50.4.4"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.3",
+    "@types/google-spreadsheet": "^3.3.2",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "^16.1.3",
+    "typescript": "^5"
+  }
+}
