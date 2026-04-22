@@ -32,17 +32,17 @@ export default function UserFotocheck({ user }: UserFotocheckProps) {
                 .fotocheck-card {
                     width: 380px;
                     height: 680px;
-                    background: linear-gradient(165deg, #0a0f1d 0%, #020617 100%);
+                    background: 00C79C;
                     border-radius: 2.5rem;
                     border: 1px solid rgba(255, 255, 255, 0.12);
-                    box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.9), 0 0 50px rgba(79, 70, 229, 0.1);
+                    
                     position: relative;
                     overflow: hidden;
                     display: flex;
                     flex-direction: column;
                     align-items: center;
                     color: white;
-                    transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.6s ease;
+                    
                     transform-style: preserve-3d;
                     animation: cardEntrance 1s ease-out forwards;
                 }
@@ -106,12 +106,12 @@ export default function UserFotocheck({ user }: UserFotocheckProps) {
                     }}>MK</h2>
                     <p style={{
                         fontSize: '0.6rem',
-                        color: '#818cf8',
+                        color: '#305BD1',
                         fontWeight: '800',
                         letterSpacing: '0.2em',
                         marginTop: '4px'
                     }}>
-                        CORPORATE SECURITY PASSPORT
+                        
                     </p>
                 </div>
 
@@ -209,7 +209,7 @@ export default function UserFotocheck({ user }: UserFotocheckProps) {
                         marginBottom: '1.5rem'
                     }}>
                         <span style={{ display: 'block', fontSize: '0.55rem', color: '#64748b', fontWeight: '800', textTransform: 'uppercase', marginBottom: '2px' }}>SUPERVISOR ASIGNADO</span>
-                        <span style={{ fontSize: '1rem', color: '#818cf8', fontWeight: '800' }}>{user.supervisor || 'SIN ASIGNAR'}</span>
+                        <span style={{ fontSize: '1rem', color: '#305BD1', fontWeight: '800' }}>{user.supervisor || 'SIN ASIGNAR'}</span>
                     </div>
 
                     {/* Meta Grid - DNI and Phone */}
@@ -246,13 +246,13 @@ export default function UserFotocheck({ user }: UserFotocheckProps) {
                     zIndex: 10
                 }}>
                     <div style={{ opacity: 0.6 }}>
-                        <svg width="40" height="40" viewBox="0 0 24 24" fill="#818cf8">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="#305BD1">
                             <path d="M3 5h2v14H3V5zm4 0h1v14H7V5zm3 0h3v14h-3V5zm4 0h1v14h-1V5zm3 0h2v14h-2V5zm3 0h1v14h-1V5z" />
                         </svg>
                     </div>
 
                     <div style={{ textAlign: 'right' }}>
-                        <p style={{ fontSize: '0.5rem', color: '#818cf8', fontWeight: '900', letterSpacing: '0.1em', margin: 0 }}>OFFICIAL ACCESS CARD</p>
+                        <p style={{ fontSize: '0.5rem', color: '#305BD1', fontWeight: '900', letterSpacing: '0.1em', margin: 0 }}>OFFICIAL ACCESS CARD</p>
                         <p style={{ fontSize: '0.4rem', color: '#475569', margin: 0 }}>© RAYDERS 2025 ALL RIGHTS RESERVED</p>
                     </div>
                 </div>

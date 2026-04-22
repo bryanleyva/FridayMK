@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import UserMenu from './UserMenu';
 import { getEffectiveCampaigns } from '@/lib/campaign';
@@ -70,10 +71,10 @@ export default function Navbar({ userRole, userName, userCargo, userPhoto, userC
                     max-width: 1200px;
                     height: 100%;
                     display: flex;
-                    alignItems: center;
+                    align-items: center;
                     padding: 0 24px;
                     justify-content: space-between;
-                    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+                    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
                     pointer-events: auto;
                     animation: navSlideDown 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
                 }
@@ -85,7 +86,6 @@ export default function Navbar({ userRole, userName, userCargo, userPhoto, userC
                     display: flex;
                     gap: 8px;
                     align-items: center;
-                    flex-wrap: wrap;
                 }
                 .nav-item {
                     color: rgba(255, 255, 255, 0.6);
@@ -94,15 +94,12 @@ export default function Navbar({ userRole, userName, userCargo, userPhoto, userC
                     font-weight: 600;
                     padding: 8px 16px;
                     border-radius: 12px;
-                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    transition: all 0.3s;
                     position: relative;
-                    letter-spacing: 0.02em;
-                    white-space: nowrap;
                 }
                 .nav-item:hover {
                     color: white;
                     background: rgba(255, 255, 255, 0.05);
-                    transform: translateY(-1px);
                 }
                 .nav-item.active {
                     color: white;
@@ -124,56 +121,43 @@ export default function Navbar({ userRole, userName, userCargo, userPhoto, userC
                     background: rgba(16, 185, 129, 0.08);
                     box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.2);
                 }
-                .nav-item.r10-badge.active {
-                    background: rgba(16, 185, 129, 0.18);
-                    box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.4);
-                }
-                .nav-item.r10-badge.active::after {
-                    background: #10b981;
-                    box-shadow: 0 0 8px #10b981;
-                }
                 .logo-section {
                     display: flex;
                     align-items: center;
-                    gap: 12px;
                     cursor: pointer;
-                    transition: transform 0.3s ease;
                 }
                 .logo-section:hover {
                     transform: scale(1.02);
                 }
-                .logo-box {
-                    width: 34px;
-                    height: 34px;
-                    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-                    border-radius: 10px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-weight: 800;
-                    color: white;
-                    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-                }
-                .logo-text {
-                    font-weight: 800;
-                    font-size: 1.1rem;
-                    color: white;
-                    letter-spacing: 0.05em;
-                }
-                .logo-accent {
-                    color: #6366f1;
-                }
             `}</style>
 
             <div className="nav-container">
-                <Link href="/" style={{ textDecoration: 'none' }}>
-                    <div className="logo-section">
-                        <div className="logo-box">FR</div>
-                        <span className="logo-text">
-                            Friday<span className="logo-accent">.MK</span>
-                        </span>
-                    </div>
-                </Link>
+
+                {/* LOGO USANDO /icono.png */}
+      <Link href="/" style={{ textDecoration: 'none' }}>
+    <div
+        className="logo-section"
+        style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: '100%',
+            marginLeft: '30px',   // ← mueve el logo a la derecha
+        }}
+    >
+        <Image
+            src="/icono.png"
+            alt="Logo"
+            width={90}
+            height={90}
+            priority
+            style={{
+                borderRadius: '0px',
+                objectFit: 'contain',
+            }}
+        />
+    </div>
+</Link>
 
                 <nav className="nav-links">
                     {navItems.map((item) => {

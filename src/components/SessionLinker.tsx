@@ -773,7 +773,7 @@ export default function SessionLinker({ currentUserRole, currentUserName, curren
                         letter-spacing: 0.3em;
                     }
 
-                    .dv-card-title.indigo { color: #818cf8; }
+                    .dv-card-title.indigo { color: #305BD1; }
                     .dv-card-title.emerald { color: #10b981; }
                     .dv-card-title.pink { color: #f472b6; }
                     .dv-card-title.amber { color: #fbbf24; }
@@ -897,7 +897,7 @@ export default function SessionLinker({ currentUserRole, currentUserName, curren
                     }
 
                     .sent .msg-user { color: #10b981; }
-                    .received .msg-user { color: #818cf8; }
+                    .received .msg-user { color: #305BD1; }
 
                     .msg-text {
                         font-size: 14px;
@@ -1011,7 +1011,7 @@ export default function SessionLinker({ currentUserRole, currentUserName, curren
 
                     .dv-highlight-pink { color: #ec4899; }
                     .dv-highlight-emerald { color: #10b981; }
-                    .dv-highlight-indigo { color: #818cf8; }
+                    .dv-highlight-indigo { color: #305BD1; }
 
                     .dv-meta-card {
                         background: rgba(79, 70, 229, 0.05);
@@ -1604,7 +1604,7 @@ export default function SessionLinker({ currentUserRole, currentUserName, curren
                                             </span>
                                         </td>
                                         <td className="table-cell">
-                                            <span style={{ fontSize: '13px', color: '#818cf8', fontWeight: '950', textTransform: 'uppercase' }}>{v.detalle || ''}</span>
+                                            <span style={{ fontSize: '13px', color: '#305BD1', fontWeight: '950', textTransform: 'uppercase' }}>{v.detalle || ''}</span>
                                         </td>
                                         <td className="table-cell">
                                             <span style={{ fontSize: '13px', color: '#71717a', fontWeight: '950', textTransform: 'uppercase' }}>{v.proceso || ''}</span>
@@ -1793,17 +1793,17 @@ export default function SessionLinker({ currentUserRole, currentUserName, curren
                                                         </div>
                                                         <div className="info-block" style={{ gap: '1rem', paddingLeft: '0.25rem' }}>
                                                             <div style={{ display: 'flex', gap: '1rem' }}>
-                                                                <div className="info-item"><span className="info-label-sub">Proceso</span><p className="info-value-text" style={{ color: '#818cf8', fontWeight: '950' }}>{v.proceso}</p></div>
+                                                                <div className="info-item"><span className="info-label-sub">Proceso</span><p className="info-value-text" style={{ color: '#305BD1', fontWeight: '950' }}>{v.proceso}</p></div>
                                                                 <div className="info-item"><span className="info-label-sub">Detalle</span><p className="info-value-text" style={{ color: '#ec4899', fontWeight: '950' }}>{v.detalle}</p></div>
                                                             </div>
-                                                            <div className="info-item"><span className="info-label-sub">Autorización</span><p className="info-value-text" style={{ color: '#818cf8', fontWeight: '950', fontSize: '14px' }}>{v.aprobacion || 'PENDIENTE'}</p></div>
+                                                            <div className="info-item"><span className="info-label-sub">Autorización</span><p className="info-value-text" style={{ color: '#305BD1', fontWeight: '950', fontSize: '14px' }}>{v.aprobacion || 'PENDIENTE'}</p></div>
                                                             <div className="info-item"><span className="info-label-sub">Descuento</span><p className="info-value-text" style={{ color: '#10b981', fontWeight: '950', fontSize: '14px' }}>{v.descuento || '0'}% APLICADO</p></div>
                                                             <div className="info-item"><span className="info-label-sub">Mesa Asignada</span><p className="info-value-text" style={{ fontSize: '14px' }}>{v.mesaAsignada || 'EN ESPERA'}</p></div>
                                                         </div>
                                                     </div>
 
                                                     <div className="observation-card">
-                                                        <h4 className="info-label-main" style={{ color: '#818cf8' }}>Observaciones</h4>
+                                                        <h4 className="info-label-main" style={{ color: '#305BD1' }}>Observaciones</h4>
                                                         <div className="info-block" style={{ gap: '1.25rem' }}>
                                                             <div className="obs-item">
                                                                 <span className="obs-label" style={{ color: 'rgba(129, 140, 248, 0.6)' }}>Ejecutivo</span>
@@ -2307,7 +2307,7 @@ export default function SessionLinker({ currentUserRole, currentUserName, curren
                 .status-amber { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3); }
                 .status-blue { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border-color: rgba(59, 130, 246, 0.3); }
                 .status-rose { background: rgba(244, 63, 94, 0.2); color: #fb7185; border-color: rgba(244, 63, 94, 0.3); }
-                .status-indigo { background: rgba(99, 102, 241, 0.2); color: #818cf8; border-color: rgba(99, 102, 241, 0.3); }
+                .status-indigo { background: rgba(99, 102, 241, 0.2); color: #305BD1; border-color: rgba(99, 102, 241, 0.3); }
                 .status-sky { background: rgba(14, 165, 233, 0.2); color: #38bdf8; border-color: rgba(14, 165, 233, 0.3); }
                 .status-violet { background: rgba(139, 92, 246, 0.2); color: #a78bfa; border-color: rgba(139, 92, 246, 0.3); }
                 .status-orange { background: rgba(249, 115, 22, 0.2); color: #fb923c; border-color: rgba(249, 115, 22, 0.3); }
@@ -2692,7 +2692,7 @@ export default function SessionLinker({ currentUserRole, currentUserName, curren
                 }
 
                 .info-icon-wrapper.emerald { background: rgba(16, 185, 129, 0.1); color: #10b981; }
-                .info-icon-wrapper.indigo { background: rgba(79, 70, 229, 0.1); color: #818cf8; }
+                .info-icon-wrapper.indigo { background: rgba(79, 70, 229, 0.1); color: #305BD1; }
                 .info-icon-wrapper.pink { background: rgba(236, 72, 153, 0.1); color: #ec4899; }
 
                 .info-label-main {

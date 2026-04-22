@@ -458,7 +458,7 @@ export default function LeadManager({ userEmail, userName, userRole }: LeadFormP
                             left: 0,
                             right: 0,
                             height: '6px',
-                            background: 'linear-gradient(90deg, #4f46e5 0%, #818cf8 100%)',
+                            background: 'linear-gradient(90deg, #4f46e5 0%, #305BD1 100%)',
                             borderRadius: '2.5rem 2.5rem 0 0'
                         }} />
 
@@ -658,7 +658,7 @@ export default function LeadManager({ userEmail, userName, userRole }: LeadFormP
                                         border: '1px solid rgba(255,255,255,0.03)'
                                     }}>
                                         <div>
-                                            <span style={{ ...labelStyle, color: '#818cf8', opacity: 1 }}>¿SOLICITA INFORMACIÓN?</span>
+                                            <span style={{ ...labelStyle, color: '#305BD1', opacity: 1 }}>¿SOLICITA INFORMACIÓN?</span>
                                             <select className="custom-select-premium" style={{ width: '100%' }} value={formState.deseaInfo} onChange={(e) => setFormState({ ...formState, deseaInfo: e.target.value })}>
                                                 <option value="">SELECCIONE RESPUESTA</option>
                                                 <option value="SI">SI</option>
@@ -666,7 +666,7 @@ export default function LeadManager({ userEmail, userName, userRole }: LeadFormP
                                             </select>
                                         </div>
                                         <div>
-                                            <span style={{ ...labelStyle, color: '#818cf8', opacity: 1 }}>ESTADO DE LA GESTIÓN</span>
+                                            <span style={{ ...labelStyle, color: '#305BD1', opacity: 1 }}>ESTADO DE LA GESTIÓN</span>
                                             <select
                                                 className="custom-select-premium"
                                                 style={{ width: '100%' }}
@@ -674,7 +674,7 @@ export default function LeadManager({ userEmail, userName, userRole }: LeadFormP
                                                 onChange={(e) => setFormState({ ...formState, estado: e.target.value })}
                                             >
                                                 <option value="">Seleccionar estado</option>
-                                                <option value="INTERESADO" style={{ color: '#818cf8', fontWeight: 'bold' }}>🚀 INTERESADO (Subir al Pipeline)</option>
+                                                <option value="INTERESADO" style={{ color: '#305BD1', fontWeight: 'bold' }}>🚀 INTERESADO (Subir al Pipeline)</option>
                                                 <option value="VOLVER A LLAMAR" style={{ color: '#fbbf24', fontWeight: 'bold' }}>📅 VOLVER A LLAMAR (Agendar)</option>
                                                 <option value="NO INTERESADO">NO INTERESADO</option>
                                                 <option value="TELEFONO EQUIVOCADO">TELEFONO EQUIVOCADO</option>
