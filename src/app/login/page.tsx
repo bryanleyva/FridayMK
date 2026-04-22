@@ -3,6 +3,7 @@
 import { signIn } from 'next-auth/react';
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 
 function LoginContent() {
     const [user, setUser] = useState('');
@@ -20,7 +21,6 @@ function LoginContent() {
             setError('Credenciales incorrectas');
         }
 
-        // Clean URL after 2 seconds to avoid interference with signIn
         const timeout = setTimeout(() => {
             if (window.location.search) {
                 window.history.replaceState({}, '', window.location.pathname);
@@ -31,7 +31,6 @@ function LoginContent() {
     }, [searchParams]);
 
     useEffect(() => {
-        // Clear interstitial ad flag so it shows on next login
         sessionStorage.removeItem('hasSeenInterstitialAd');
     }, []);
 
@@ -70,10 +69,22 @@ function LoginContent() {
     return (
         <div className="min-h-screen flex flex-col items-center justify-center p-4">
             <div className="card-professional p-10 animate-fade-in" style={{ borderTop: '4px solid var(--primary)', marginBottom: '20px' }}>
+
+                {/* ===== LOGO CENTRADO ===== */}
+                <div className="flex justify-center mb-6">
+                    <Image
+                        src="/icono.png"
+                        alt="Logo"
+                        width={130}
+                        height={130}
+                        priority
+                        style={{
+                            objectFit: 'contain'
+                        }}
+                    />
+                </div>
+
                 <div className="text-center mb-8">
-                    <h1 className="text-3xl font-bold text-white mb-2 uppercase" style={{ letterSpacing: '1px' }}>
-                        LISHING
-                    </h1>
                     <p className="text-xs text-gray-400 uppercase tracking-widest font-medium">
                         Portal de Acceso
                     </p>
@@ -81,9 +92,7 @@ function LoginContent() {
 
                 <form onSubmit={handleSubmit}>
                     <div className="mb-6">
-                        <label className="label-premium">
-                            Usuario
-                        </label>
+                        <label className="label-premium">Usuario</label>
                         <input
                             type="text"
                             value={user}
@@ -95,9 +104,7 @@ function LoginContent() {
                     </div>
 
                     <div className="mb-8">
-                        <label className="label-premium">
-                            Contraseña
-                        </label>
+                        <label className="label-premium">Contraseña</label>
                         <input
                             type="password"
                             value={password}
@@ -109,7 +116,8 @@ function LoginContent() {
                     </div>
 
                     {error && (
-                        <div className="mb-6 p-4 rounded text-danger text-sm text-center font-bold" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)' }}>
+                        <div className="mb-6 p-4 rounded text-danger text-sm text-center font-bold"
+                            style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)' }}>
                             {error}
                         </div>
                     )}
@@ -123,14 +131,14 @@ function LoginContent() {
                     </button>
                 </form>
 
-                <div className="mt-8 text-center" style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.5rem' }}>
+                <div className="mt-8 text-center"
+                    style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.5rem' }}>
                     <p className="text-xs text-gray-500 mb-1">
-                        &copy; {new Date().getFullYear()} Lishing System. Todos los derechos reservados.
+                        &copy; {new Date().getFullYear()} Backap. Todos los derechos reservados.
                     </p>
                 </div>
+
             </div>
-
-
         </div>
     );
 }
