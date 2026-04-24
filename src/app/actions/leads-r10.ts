@@ -3,6 +3,8 @@
 import { doc, loadDoc } from '@/lib/google-sheets';
 import { UserCache } from '@/lib/user-cache';
 
+
+
 // ============================================
 // HELPERS
 // ============================================
@@ -236,13 +238,13 @@ export async function getInteresadosR10(
 }
 
 // ============================================
-// LISTAR INGRESADOS (módulo Ingresos R10)
+// LISTAR INGRESADOS (con filtro por estado)
 // ============================================
 
 export async function getIngresadosR10(
     userName: string,
     userRole: string,
-    filters?: { startDate?: string; endDate?: string; search?: string }
+    filters?: { startDate?: string; endDate?: string; search?: string; estado?: string; scope?: 'mine' | 'team' | 'all' }
 ) {
     try {
         await loadDoc();
@@ -252,20 +254,29 @@ export async function getIngresadosR10(
         const rows = await sheet.getRows();
         let filtered = rows;
 
-        if (userRole !== 'ADMIN') {
+        // Scope (mine/team/all) tiene prioridad sobre el rol
+        const scope = filters?.scope;
+        if (scope === 'all' || userRole === 'ADMIN' || (userRole === 'BACKOFFICE' && !scope)) {
+            // Ve todo
+        } else if (scope === 'team' || userRole === 'SPECIAL') {
+            const userCache = UserCache.getInstance();
+            await userCache.ensureInitialized();
+            const team = userCache.getTeamForSupervisor(userName);
+            const teamNames = new Set(team.map(u => (u.get('NOMBRES COMPLETOS') || '').toLowerCase().trim()));
+            teamNames.add(userName.toLowerCase().trim());
+            filtered = rows.filter(r => teamNames.has((r.get('EJECUTIVO') || '').toLowerCase().trim()));
+        } else {
+            // STANDAR o scope='mine': solo lo suyo
             const normUser = userName.toLowerCase().trim();
-            if (userRole === 'SPECIAL') {
-                const userCache = UserCache.getInstance();
-                await userCache.ensureInitialized();
-                const team = userCache.getTeamForSupervisor(userName);
-                const teamNames = new Set(team.map(u => (u.get('NOMBRES COMPLETOS') || '').toLowerCase().trim()));
-                teamNames.add(normUser);
-                filtered = rows.filter(r => teamNames.has((r.get('EJECUTIVO') || '').toLowerCase().trim()));
-            } else {
-                filtered = rows.filter(r => (r.get('EJECUTIVO') || '').toLowerCase().trim() === normUser);
-            }
+            filtered = rows.filter(r => (r.get('EJECUTIVO') || '').toLowerCase().trim() === normUser);
         }
 
+        // Filtro por estado (si aplica)
+        if (filters?.estado && filters.estado !== 'TODOS') {
+            filtered = filtered.filter(r => (r.get('ESTADO') || '').toUpperCase().trim() === filters.estado);
+        }
+
+        // Filtro por fecha de cierre
         if (filters?.startDate || filters?.endDate) {
             filtered = filtered.filter(r => {
                 const dateStr = r.get('FECHA_CIERRE');
@@ -293,6 +304,7 @@ export async function getIngresadosR10(
             });
         }
 
+        // Agrupar por VENTA_ID
         const byVentaId: Record<string, any[]> = {};
         for (const row of filtered) {
             const vid = row.get('VENTA_ID') || '';
@@ -308,10 +320,17 @@ export async function getIngresadosR10(
                 supervisor: first.get('SUPERVISOR'),
                 fechaIngreso: first.get('FECHA_INGRESO'),
                 fechaCierre: first.get('FECHA_CIERRE'),
+                fechaActivacion: first.get('FECHA_ACTIVACION'),
+                estado: first.get('ESTADO'),
                 canalVenta: first.get('CANAL_VENTA'),
                 rucDni: first.get('RUC_DNI'),
                 tipoIngreso: first.get('TIPO_INGRESO'),
                 nombresApellidos: first.get('NOMBRES_APELLIDOS'),
+                fechaNacimiento: first.get('FECHA_NACIMIENTO'),
+                estadoCivil: first.get('ESTADO_CIVIL'),
+                distritoNacimiento: first.get('DISTRITO_NACIMIENTO'),
+                nombrePapa: first.get('NOMBRE_PAPA'),
+                nombreMama: first.get('NOMBRE_MAMA'),
                 correo: first.get('CORREO'),
                 tipoEntrega: first.get('TIPO_ENTREGA'),
                 numeroContacto: first.get('NUMERO_CONTACTO'),
@@ -322,6 +341,10 @@ export async function getIngresadosR10(
                 fechaEnvio: first.get('FECHA_ENVIO'),
                 rangoEnvio: first.get('RANGO_ENVIO'),
                 pdvTienda: first.get('PDV_TIENDA'),
+                mesaControlAsignado: first.get('MESA_CONTROL_ASIGNADO'),
+                observacionBo: first.get('OBSERVACION_BO'),
+                motivoRechazo: first.get('MOTIVO_RECHAZO'),
+                observacion: first.get('OBSERVACION'),
                 cantidadLineas: lines.length,
                 lineas: lines.map(l => ({
                     lineaNum: l.get('LINEA_NUM'),
@@ -344,7 +367,7 @@ export async function getIngresadosR10(
 }
 
 // ============================================
-// ETAPA 2a: CULMINAR VENTA
+// ETAPA 2a: CULMINAR VENTA (ahora en PENDIENTE)
 // ============================================
 
 export async function culminarVentaR10(ventaId: string, data: CulminarVentaInput) {
@@ -376,7 +399,7 @@ export async function culminarVentaR10(ventaId: string, data: CulminarVentaInput
                 'EJECUTIVO': linea.get('EJECUTIVO'),
                 'SUPERVISOR': linea.get('SUPERVISOR'),
                 'CAMPAÑA': 'R10',
-                'ESTADO': 'CERRADO',
+                'ESTADO': 'PENDIENTE',
                 'CANAL_VENTA': linea.get('CANAL_VENTA'),
                 'RUC_DNI': linea.get('RUC_DNI'),
                 'TIPO_INGRESO': linea.get('TIPO_INGRESO'),
@@ -403,6 +426,10 @@ export async function culminarVentaR10(ventaId: string, data: CulminarVentaInput
                 'RANGO_ENVIO': data.rangoEnvio || '',
                 'PDV_TIENDA': data.pdvTienda || '',
                 'OBSERVACION': linea.get('OBSERVACION'),
+                'FECHA_ACTIVACION': '',
+                'MESA_CONTROL_ASIGNADO': '',
+                'OBSERVACION_BO': '',
+                'MOTIVO_RECHAZO': '',
             } as any);
             nextIngresadosId++;
         }
@@ -423,11 +450,7 @@ export async function culminarVentaR10(ventaId: string, data: CulminarVentaInput
 // ETAPA 2b: DAR DE BAJA
 // ============================================
 
-export async function saveDroppedR10(
-    ventaId: string,
-    motivo: string,
-    observacion: string
-) {
+export async function saveDroppedR10(ventaId: string, motivo: string, observacion: string) {
     try {
         await loadDoc();
         const interesadosSheet = doc.sheetsByTitle['INTERESADOS_R10'];
@@ -471,5 +494,46 @@ export async function saveDroppedR10(
     } catch (error: any) {
         console.error('Error en saveDroppedR10:', error);
         return { success: false, error: error.message || 'Error al dar de baja' };
+    }
+}
+
+// ============================================
+// MESA DE CONTROL: Cambiar estado de venta
+// ============================================
+
+export async function updateEstadoIngresadoR10(
+    ventaId: string,
+    nuevoEstado: 'ACTIVO' | 'RECHAZADO' | 'PENDIENTE',
+    backofficeUser: string,
+    observacion?: string,
+    motivoRechazo?: string
+) {
+    try {
+        await loadDoc();
+        const sheet = doc.sheetsByTitle['INGRESADOS_R10'];
+        if (!sheet) return { success: false, error: 'Hoja INGRESADOS_R10 no encontrada' };
+
+        const rows = await sheet.getRows();
+        const lineas = rows.filter(r => r.get('VENTA_ID') === ventaId);
+
+        if (lineas.length === 0) {
+            return { success: false, error: 'Venta no encontrada' };
+        }
+
+        const fechaActivacion = nuevoEstado === 'ACTIVO' ? getPeruTimestamp() : '';
+
+        for (const linea of lineas) {
+            linea.set('ESTADO', nuevoEstado);
+            linea.set('MESA_CONTROL_ASIGNADO', backofficeUser);
+            if (observacion !== undefined) linea.set('OBSERVACION_BO', observacion);
+            if (nuevoEstado === 'RECHAZADO' && motivoRechazo) linea.set('MOTIVO_RECHAZO', motivoRechazo);
+            if (nuevoEstado === 'ACTIVO') linea.set('FECHA_ACTIVACION', fechaActivacion);
+            await linea.save();
+        }
+
+        return { success: true };
+    } catch (error: any) {
+        console.error('Error en updateEstadoIngresadoR10:', error);
+        return { success: false, error: error.message || 'Error al actualizar estado' };
     }
 }

@@ -253,7 +253,7 @@ export default function UserFotocheck({ user }: UserFotocheckProps) {
 
                     <div style={{ textAlign: 'right' }}>
                         <p style={{ fontSize: '0.5rem', color: '#305BD1', fontWeight: '900', letterSpacing: '0.1em', margin: 0 }}>OFFICIAL ACCESS CARD</p>
-                        <p style={{ fontSize: '0.4rem', color: '#475569', margin: 0 }}>© RAYDERS 2025 ALL RIGHTS RESERVED</p>
+                        <p style={{ fontSize: '0.4rem', color: '#475569', margin: 0 }}>© Backap 2025 ALL RIGHTS RESERVED</p>
                     </div>
                 </div>
             </div>

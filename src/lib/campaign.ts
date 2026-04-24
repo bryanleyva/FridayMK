@@ -4,11 +4,6 @@ export type Campaign = 'R20' | 'R10';
 
 /**
  * Parsea el string de campaña de un usuario y devuelve un array limpio.
- * Ejemplos:
- *   "R20"        → ['R20']
- *   "R10"        → ['R10']
- *   "R20,R10"    → ['R20', 'R10']
- *   ""           → []
  */
 export function parseCampaigns(raw: string | undefined | null): Campaign[] {
     if (!raw) return [];
@@ -44,10 +39,6 @@ export function getEffectiveCampaigns(
     return parseCampaigns(userCampaigns);
 }
 
-/**
- * Verifica si el usuario tiene acceso a ambas campañas.
- * Útil para mostrar selectores / tabs.
- */
 export function hasMultipleCampaigns(
     userCampaigns: string | undefined,
     userRole: string | undefined
@@ -55,10 +46,6 @@ export function hasMultipleCampaigns(
     return getEffectiveCampaigns(userCampaigns, userRole).length > 1;
 }
 
-/**
- * Devuelve la campaña "por defecto" de un usuario.
- * Si tiene una sola, esa. Si tiene varias, R20 (la principal).
- */
 export function getDefaultCampaign(
     userCampaigns: string | undefined,
     userRole: string | undefined
@@ -67,4 +54,40 @@ export function getDefaultCampaign(
     if (list.length === 0) return null;
     if (list.includes('R20')) return 'R20';
     return list[0];
+}
+
+// ============================================
+// HELPERS DE ROLES
+// ============================================
+
+export type UserRole = 'ADMIN' | 'SPECIAL' | 'STANDAR' | 'BACKOFFICE';
+
+export function isBackOffice(role: string | undefined): boolean {
+    return role === 'BACKOFFICE';
+}
+
+export function isSupervisor(role: string | undefined): boolean {
+    return role === 'SPECIAL';
+}
+
+export function isEjecutivo(role: string | undefined): boolean {
+    return role === 'STANDAR';
+}
+
+export function isAdmin(role: string | undefined): boolean {
+    return role === 'ADMIN';
+}
+
+/**
+ * ¿El usuario puede cambiar estados de ventas en Mesa de Control?
+ * Solo ADMIN y BACKOFFICE (con la campaña correspondiente).
+ */
+export function canManageMesaControl(
+    role: string | undefined,
+    userCampaigns: string | undefined,
+    target: Campaign
+): boolean {
+    if (role === 'ADMIN') return true;
+    if (role !== 'BACKOFFICE') return false;
+    return hasCampaignAccess(userCampaigns, role, target);
 }

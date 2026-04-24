@@ -18,6 +18,8 @@ interface NavItem {
     name: string;
     path: string;
     campaign?: 'R20' | 'R10' | 'ALL';
+    // Roles que pueden ver este item. Si está vacío, todos pueden verlo.
+    roles?: string[];
 }
 
 export default function Navbar({ userRole, userName, userCargo, userPhoto, userCampania }: NavbarProps) {
@@ -30,18 +32,32 @@ export default function Navbar({ userRole, userName, userCargo, userPhoto, userC
 
     const allNavItems: NavItem[] = [
         { name: 'Inicio', path: '/', campaign: 'ALL' },
-        { name: 'Leads', path: '/leads', campaign: 'R20' },
-        { name: 'Deals', path: '/deals', campaign: 'R20' },
-        { name: 'Deals R10', path: '/deals-r10', campaign: 'R10' },
-        { name: 'Linker', path: '/linker', campaign: 'R20' },
-        { name: 'Ingresos ', path: '/ingresos-r10', campaign: 'R10' },
+        // --- R20 ---
+        { name: 'Leads', path: '/leads', campaign: 'R20', roles: ['STANDAR', 'SPECIAL', 'ADMIN'] },
+        { name: 'Deals', path: '/deals', campaign: 'R20', roles: ['STANDAR', 'SPECIAL', 'ADMIN'] },
+        { name: 'Linker', path: '/linker', campaign: 'R20', roles: ['STANDAR', 'SPECIAL', 'ADMIN', 'BACKOFFICE'] },
+        // --- R10 ---
+        { name: 'Deals R10', path: '/deals-r10', campaign: 'R10', roles: ['STANDAR', 'ADMIN'] },
+        { name: 'Ingresos ', path: '/ingresos-r10', campaign: 'R10', roles: ['STANDAR', 'SPECIAL', 'ADMIN'] },
+        { name: 'Mesa Control R10', path: '/mesa-control-r10', campaign: 'R10', roles: ['BACKOFFICE', 'ADMIN'] },
+        { name: 'Supervisor R10', path: '/supervisor-r10', campaign: 'R10', roles: ['SPECIAL', 'ADMIN'] },
+        { name: 'Reporte R10', path: '/reporte-r10', campaign: 'R10' },
+        // --- Compartido ---
         { name: 'Reporte', path: '/reporte', campaign: 'ALL' },
     ];
 
     const navItems = allNavItems.filter(item => {
+        // RRHH solo ve Inicio y Reporte
         if (isHR) {
             return item.name === 'Inicio' || item.name === 'Reporte';
         }
+
+        // Filtrado por rol
+        if (item.roles && item.roles.length > 0) {
+            if (!userRole || !item.roles.includes(userRole)) return false;
+        }
+
+        // Filtrado por campaña
         if (item.campaign === 'ALL') return true;
         if (item.campaign === 'R20' && hasR20) return true;
         if (item.campaign === 'R10' && hasR10) return true;
@@ -68,7 +84,7 @@ export default function Navbar({ userRole, userName, userCargo, userPhoto, userC
                     border: 1px solid rgba(255, 255, 255, 0.08);
                     border-radius: 20px;
                     width: 100%;
-                    max-width: 1200px;
+                    max-width: 1400px;
                     height: 100%;
                     display: flex;
                     align-items: center;
@@ -84,18 +100,20 @@ export default function Navbar({ userRole, userName, userCargo, userPhoto, userC
                 }
                 .nav-links {
                     display: flex;
-                    gap: 8px;
+                    gap: 6px;
                     align-items: center;
+                    flex-wrap: wrap;
                 }
                 .nav-item {
                     color: rgba(255, 255, 255, 0.6);
                     text-decoration: none;
-                    font-size: 0.9rem;
+                    font-size: 0.85rem;
                     font-weight: 600;
-                    padding: 8px 16px;
+                    padding: 7px 14px;
                     border-radius: 12px;
                     transition: all 0.3s;
                     position: relative;
+                    white-space: nowrap;
                 }
                 .nav-item:hover {
                     color: white;
@@ -121,6 +139,14 @@ export default function Navbar({ userRole, userName, userCargo, userPhoto, userC
                     background: rgba(16, 185, 129, 0.08);
                     box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.2);
                 }
+                .nav-item.r10-badge.active {
+                    background: rgba(16, 185, 129, 0.18);
+                    box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.4);
+                }
+                .nav-item.r10-badge.active::after {
+                    background: #10b981;
+                    box-shadow: 0 0 8px #10b981;
+                }
                 .logo-section {
                     display: flex;
                     align-items: center;
@@ -134,30 +160,30 @@ export default function Navbar({ userRole, userName, userCargo, userPhoto, userC
             <div className="nav-container">
 
                 {/* LOGO USANDO /icono.png */}
-      <Link href="/" style={{ textDecoration: 'none' }}>
-    <div
-        className="logo-section"
-        style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            height: '100%',
-            marginLeft: '30px',   // ← mueve el logo a la derecha
-        }}
-    >
-        <Image
-            src="/icono.png"
-            alt="Logo"
-            width={90}
-            height={90}
-            priority
-            style={{
-                borderRadius: '0px',
-                objectFit: 'contain',
-            }}
-        />
-    </div>
-</Link>
+                <Link href="/" style={{ textDecoration: 'none' }}>
+                    <div
+                        className="logo-section"
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            height: '100%',
+                            marginLeft: '30px',
+                        }}
+                    >
+                        <Image
+                            src="/icono.png"
+                            alt="Logo"
+                            width={90}
+                            height={90}
+                            priority
+                            style={{
+                                borderRadius: '0px',
+                                objectFit: 'contain',
+                            }}
+                        />
+                    </div>
+                </Link>
 
                 <nav className="nav-links">
                     {navItems.map((item) => {
