@@ -35,6 +35,7 @@ export default function Navbar({ userRole, userName, userCargo, userPhoto, userC
         // --- R20 ---
         { name: 'Leads', path: '/leads', campaign: 'R20', roles: ['STANDAR', 'SPECIAL', 'ADMIN'] },
         { name: 'Deals', path: '/deals', campaign: 'R20', roles: ['STANDAR', 'SPECIAL', 'ADMIN'] },
+        { name: 'Scraper R20', path: '/scraper-r20', campaign: 'R20', roles: ['ADMIN'] },
         { name: 'Linker', path: '/linker', campaign: 'R20', roles: ['STANDAR', 'SPECIAL', 'ADMIN', 'BACKOFFICE'] },
         // --- R10 ---
         { name: 'Deals R10', path: '/deals-r10', campaign: 'R10', roles: ['STANDAR', 'ADMIN'] },
