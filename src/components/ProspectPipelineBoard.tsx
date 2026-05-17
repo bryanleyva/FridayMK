@@ -131,7 +131,11 @@ export default function ProspectPipelineBoard({ leads: initialLeads, userRole, u
         setCurrentFilters(filters);
         try {
             if (viewMode === 'dropped') {
-                const freshDropped = await getDroppedProspects(userName, { role: userRole });
+                const freshDropped = await getDroppedProspects(userName, {
+                    role: userRole,
+                    campana: filters.campana,
+                    viewAll: filters.viewAll
+                });
                 setDroppedLeads(freshDropped);
             } else {
                 const fresh = await getPipelineData(userName, {
@@ -150,7 +154,11 @@ export default function ProspectPipelineBoard({ leads: initialLeads, userRole, u
     const loadDroppedData = async () => {
         setIsLoading(true);
         try {
-            const data = await getDroppedProspects(userName, { role: userRole });
+            const data = await getDroppedProspects(userName, {
+                role: userRole,
+                campana: currentFilters.campana,
+                viewAll: currentFilters.viewAll
+            });
             setDroppedLeads(data);
         } catch (error) {
             console.error("Error loading dropped leads", error);
@@ -471,6 +479,45 @@ export default function ProspectPipelineBoard({ leads: initialLeads, userRole, u
                 onExport={handleExport}
                 teamMembers={teamMembers}
             />
+
+            {/* KPI Total de Prospección */}
+            {viewMode !== 'dropped' && (() => {
+                const safeParse = (val: any) => {
+                    if (typeof val === 'number') return val;
+                    if (!val) return 0;
+                    const clean = String(val).replace(/[^0-9,.]/g, '').replace(/\./g, '').replace(',', '.');
+                    return parseFloat(clean) || 0;
+                };
+                const totalDeals = leads.filter(l => {
+                    const s = (l.ESTADO || l.estado || '').trim().toUpperCase();
+                    return s !== 'VENTA SUBIDA' && s !== 'VENTA CAIDA';
+                }).length;
+                const totalLineas = leads.reduce((sum, l) => sum + safeParse(l['CANTIDAD LINEAS'] || l.lineas), 0);
+                const totalCF = leads.reduce((sum, l) => sum + safeParse(l['CARGO FIJO'] || l.cargoFijo), 0);
+                const totalNeto = totalCF / 1.18;
+                return (
+                    <div style={{ padding: '8px 24px', display: 'flex', gap: '12px', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            <div style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '12px', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <span style={{ fontSize: '9px', fontWeight: 900, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.2em' }}>Total Prospectos</span>
+                                <span style={{ fontSize: '20px', fontWeight: 900, color: '#10b981' }}>{totalDeals}</span>
+                            </div>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <span style={{ fontSize: '9px', fontWeight: 900, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.2em' }}>Total Líneas</span>
+                                <span style={{ fontSize: '20px', fontWeight: 900, color: 'white' }}>{totalLineas}</span>
+                            </div>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <span style={{ fontSize: '9px', fontWeight: 900, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.2em' }}>CF Bruto</span>
+                                <span style={{ fontSize: '16px', fontWeight: 900, color: '#f59e0b' }}>S/ {totalCF.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <span style={{ fontSize: '9px', fontWeight: 900, color: 'rgba(16,185,129,0.6)', textTransform: 'uppercase', letterSpacing: '0.2em' }}>CF Neto</span>
+                                <span style={{ fontSize: '16px', fontWeight: 900, color: '#10b981' }}>S/ {totalNeto.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
 
             {/* View Mode Toggle */}
             <div style={{ padding: '0 24px 12px 24px', display: 'flex', justifyContent: 'flex-start' }}>
@@ -1377,7 +1424,15 @@ export default function ProspectPipelineBoard({ leads: initialLeads, userRole, u
                     userRole={userRole}
                 />
             ) : (
-                <DroppedProspectsTable data={droppedLeads} />
+                <DroppedProspectsTable data={droppedLeads} userRole={userRole} onDelete={async (id) => {
+                    const { deleteDroppedProspect } = await import('@/app/actions/leads');
+                    const res = await deleteDroppedProspect(id);
+                    if (res.success) {
+                        setDroppedLeads(prev => prev.filter(d => d.id !== id));
+                    } else {
+                        AppSwal.fire({ title: 'Error', text: res.error || 'No se pudo eliminar', icon: 'error', confirmButtonColor: '#ef4444' });
+                    }
+                }} />
             )}
 
             <SubirVentaModal

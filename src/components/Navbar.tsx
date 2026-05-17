@@ -45,6 +45,7 @@ export default function Navbar({ userRole, userName, userCargo, userPhoto, userC
         { name: 'Reporte R10', path: '/reporte-r10', campaign: 'R10' },
         // --- Compartido ---
         { name: 'Reporte', path: '/reporte', campaign: 'ALL' },
+        { name: 'Accesos', path: '/accesos', campaign: 'ALL', roles: ['ADMIN'] },
     ];
 
     const navItems = allNavItems.filter(item => {

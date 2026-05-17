@@ -699,7 +699,9 @@ export async function getPipelineData(userName: string, options: {
     filterUser?: string,
     startDate?: string,
     endDate?: string,
-    search?: string
+    search?: string,
+    campana?: string,
+    viewAll?: boolean
 }) {
     try {
         await loadDoc();
@@ -707,10 +709,11 @@ export async function getPipelineData(userName: string, options: {
         if (!sheet) return [];
 
         let rows = await sheet.getRows();
-        const { role, filterUser, startDate, endDate, search } = options;
+        const { role, filterUser, startDate, endDate, search, campana, viewAll } = options;
 
         // 1. Role-based Level 1 Filter (Who can see what)
-        if (role === 'SPECIAL') {
+        // SPECIAL with viewAll=true sees everyone's deals (for campaign-wide view)
+        if (role === 'SPECIAL' && !viewAll) {
             const userCache = UserCache.getInstance();
             await userCache.ensureInitialized();
             const team = userCache.getTeamForSupervisor(userName);
@@ -729,7 +732,7 @@ export async function getPipelineData(userName: string, options: {
                 const exec = r.get('EJECUTIVO')?.toLowerCase().trim();
                 return exec && teamIdentities.has(exec);
             });
-        } else if (role !== 'ADMIN') {
+        } else if (role !== 'ADMIN' && role !== 'SPECIAL') {
             // STANDARD - Match name or code
             const normUser = userName.toLowerCase().trim();
             const userCache = UserCache.getInstance();
@@ -799,14 +802,23 @@ export async function getPipelineData(userName: string, options: {
             });
         }
 
+        // 5. Campaign filter (RUC prefix: R10 = starts with "10", R20 = starts with "20")
+        if (campana && campana !== 'TODAS') {
+            const prefix = campana === 'R10' ? '10' : '20';
+            rows = rows.filter(r => {
+                const ruc = (r.get('RUC') || '').trim();
+                return ruc.startsWith(prefix);
+            });
+        }
+
         // Initialize UserCache for supervisor enrichment
-        const userCache = UserCache.getInstance();
-        await userCache.refresh(); // Ensure fresh data for exports
+        const userCache2 = UserCache.getInstance();
+        await userCache2.refresh(); // Ensure fresh data for exports
 
         // Map sheet data to expected component interface
         const data = rows.map(row => {
             const execName = row.get('EJECUTIVO');
-            const supervisor = userCache.getSupervisorForUser(execName);
+            const supervisor = userCache2.getSupervisorForUser(execName);
 
             return {
                 id: row.get('ID') || String((row as any).rowIndex),
@@ -1333,20 +1345,20 @@ export async function updateVentaFull(id: string, data: any) {
     }
 }
 
-export async function getDroppedProspects(userName: string, options: { role: string }) {
+export async function getDroppedProspects(userName: string, options: { role: string, campana?: string, viewAll?: boolean }) {
     try {
         await loadDoc();
         const sheet = doc.sheetsByTitle['PROSPECTOS CAIDOS'];
         if (!sheet) return [];
 
         let rows = await sheet.getRows();
-        const { role } = options;
+        const { role, campana, viewAll } = options;
 
         const userCache = UserCache.getInstance();
         await userCache.ensureInitialized();
 
         // 1. Role-based filtering
-        if (role === 'SPECIAL') {
+        if (role === 'SPECIAL' && !viewAll) {
             const team = userCache.getTeamForSupervisor(userName);
             const teamIdentities = new Set<string>();
             team.forEach(u => {
@@ -1361,7 +1373,7 @@ export async function getDroppedProspects(userName: string, options: { role: str
                 const exec = r.get('EJECUTIVO')?.toLowerCase().trim();
                 return exec && teamIdentities.has(exec);
             });
-        } else if (role !== 'ADMIN') {
+        } else if (role !== 'ADMIN' && role !== 'SPECIAL') {
             // STANDARD - only see their own (though button is hidden, safety first)
             const normUser = userName.toLowerCase().trim();
             const self = userCache.findUser(userName);
@@ -1373,8 +1385,17 @@ export async function getDroppedProspects(userName: string, options: { role: str
             });
         }
 
+        // 2. Campaign filter (by RUC prefix)
+        if (campana && campana !== 'TODAS') {
+            const prefix = campana === 'R10' ? '10' : '20';
+            rows = rows.filter(r => {
+                const ruc = (r.get('RUC') || '').trim();
+                return ruc.startsWith(prefix);
+            });
+        }
+
         const data = rows.map(row => ({
-            id: row.get('ID'),
+            id: row.get('ID') || String((row as any).rowIndex),
             ruc: row.get('RUC'),
             razonSocial: row.get('RAZON SOCIAL'),
             contacto: row.get('CONTACTO'),
@@ -1383,15 +1404,122 @@ export async function getDroppedProspects(userName: string, options: { role: str
             cargoFijo: row.get('CARGO FIJO'),
             ejecutivo: row.get('EJECUTIVO'),
             motivo: row.get('MOTIVO'),
-            estadoFinal: row.get('ESTADO') || row.get('ESTADO FINAL'), // Fallback for transition
+            estadoFinal: row.get('ESTADO') || row.get('ESTADO FINAL'),
             fechaCaida: row.get('FECHA CAIDA')
         }));
 
-        // Sort by FECHA CAIDA descending (assuming format works with sort or just reverse for sheet order)
         return data.reverse();
     } catch (error) {
         console.error('Error in getDroppedProspects:', error);
         return [];
+    }
+}
+
+export async function deleteDroppedProspect(id: string) {
+    try {
+        await loadDoc();
+        const sheet = doc.sheetsByTitle['PROSPECTOS CAIDOS'];
+        if (!sheet) return { success: false, error: 'Hoja no encontrada' };
+
+        const rows = await sheet.getRows();
+        const row = rows.find(r => {
+            const rowId = r.get('ID') || String((r as any).rowIndex);
+            return rowId === id;
+        });
+
+        if (!row) return { success: false, error: 'Registro no encontrado' };
+
+        await row.delete();
+        return { success: true };
+    } catch (error) {
+        console.error('Error deleting dropped prospect:', error);
+        return { success: false, error: 'Error al eliminar el registro' };
+    }
+}
+
+export async function getAllUsers() {
+    try {
+        const userCache = UserCache.getInstance();
+        await userCache.refresh();
+        const rows = userCache.getAll();
+
+        return rows.map(r => ({
+            dni: r.get('DNI') || '',
+            nombre: r.get('NOMBRES COMPLETOS') || '',
+            user: r.get('USER') || '',
+            rol: r.get('ROL') || '',
+            cargo: r.get('CARGO') || '',
+            supervisor: r.get('SUPERVISOR') || '',
+            telefono: r.get('TELEFONO') || '',
+            campana: r.get('CAMPAÑA') || ''
+        }));
+    } catch (error) {
+        console.error('Error in getAllUsers:', error);
+        return [];
+    }
+}
+
+export async function getAllSupervisors() {
+    try {
+        const userCache = UserCache.getInstance();
+        await userCache.ensureInitialized();
+        const rows = userCache.getAll();
+
+        return rows
+            .filter(r => (r.get('ROL') || '').trim().toUpperCase() === 'SPECIAL')
+            .map(r => ({
+                user: r.get('USER') || '',
+                nombre: r.get('NOMBRES COMPLETOS') || ''
+            }));
+    } catch (error) {
+        console.error('Error in getAllSupervisors:', error);
+        return [];
+    }
+}
+
+export async function createUser(data: {
+    dni: string;
+    nombre: string;
+    user: string;
+    clave: string;
+    supervisor: string;
+    campana: string;
+    telefono?: string;
+}) {
+    try {
+        await loadDoc();
+        const sheet = doc.sheetsByTitle['USUARIOS'];
+        if (!sheet) return { success: false, error: 'Hoja USUARIOS no encontrada' };
+
+        // Check user doesn't already exist
+        const rows = await sheet.getRows();
+        const exists = rows.find(r =>
+            r.get('USER')?.trim().toUpperCase() === data.user.trim().toUpperCase() ||
+            r.get('DNI')?.trim() === data.dni.trim()
+        );
+        if (exists) return { success: false, error: 'Ya existe un usuario con ese DNI o nombre de usuario' };
+
+        const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
+
+        await sheet.addRow({
+            'DNI': data.dni,
+            'NOMBRES COMPLETOS': data.nombre,
+            'USER': data.user,
+            'CLAVE': data.clave,
+            'ROL': 'STANDAR',
+            'SUPERVISOR': data.supervisor,
+            'TELEFONO': data.telefono || '',
+            'SESSION_TOKEN': token,
+            'CAMPAÑA': data.campana
+        });
+
+        const userCache = UserCache.getInstance();
+        await userCache.refresh();
+
+        return { success: true };
+    } catch (error) {
+        console.error('Error creating user:', error);
+        return { success: false, error: 'Error al crear el usuario' };
     }
 }
 
@@ -1531,10 +1659,7 @@ export async function getExecutiveAssignmentStats(userRole?: string, userName?: 
         const stock: Record<string, number> = {
             '1-4': 0,
             '5-10': 0,
-            '11-15': 0,
-            '16-21': 0,
-            '22-30': 0,
-            '30+': 0
+           
         };
 
         allLeads.forEach(row => {
@@ -1543,10 +1668,7 @@ export async function getExecutiveAssignmentStats(userRole?: string, userName?: 
                 const lineas = parseInt(row.get('CANTIDAD LINEAS') || '0');
                 if (lineas >= 1 && lineas <= 4) stock['1-4']++;
                 else if (lineas >= 5 && lineas <= 10) stock['5-10']++;
-                else if (lineas >= 11 && lineas <= 15) stock['11-15']++;
-                else if (lineas >= 16 && lineas <= 21) stock['16-21']++;
-                else if (lineas >= 22 && lineas <= 30) stock['22-30']++;
-                else if (lineas > 30) stock['30+']++;
+           
             }
         });
 
@@ -1600,10 +1722,7 @@ export async function assignLeadsByCriteria(
             switch (rangeId) {
                 case '1-4': return lineas >= 1 && lineas <= 4;
                 case '5-10': return lineas >= 5 && lineas <= 10;
-                case '11-15': return lineas >= 11 && lineas <= 15;
-                case '16-21': return lineas >= 16 && lineas <= 21;
-                case '22-30': return lineas >= 22 && lineas <= 30;
-                case '30+': return lineas > 30;
+               
                 default: return false;
             }
         };
