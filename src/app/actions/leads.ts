@@ -1735,3 +1735,47 @@ export async function assignLeadsByCriteria(
         return { success: false, count: 0, error: 'Error al asignar leads por criterio' };
     }
 }
+
+export async function deletePipelineDeal(id: string) {
+    try {
+        await loadDoc();
+        const sheet = doc.sheetsByTitle['PROSPECCION'];
+        if (!sheet) return { success: false, error: 'Hoja PROSPECCION no encontrada' };
+
+        const rows = await sheet.getRows();
+        const row = rows.find(r => {
+            const rowId = r.get('ID') || String((r as any).rowIndex);
+            return rowId === id;
+        });
+
+        if (!row) return { success: false, error: 'Deal no encontrado' };
+
+        await row.delete();
+        return { success: true };
+    } catch (error) {
+        console.error('Error deleting pipeline deal:', error);
+        return { success: false, error: 'Error al eliminar el deal' };
+    }
+}
+
+export async function deleteVenta(id: string) {
+    try {
+        await loadDoc();
+        const sheet = doc.sheetsByTitle['VENTAS'];
+        if (!sheet) return { success: false, error: 'Hoja VENTAS no encontrada' };
+
+        const rows = await sheet.getRows();
+        const row = rows.find(r => {
+            const rowId = r.get('ID') || String((r as any).rowIndex);
+            return rowId === id;
+        });
+
+        if (!row) return { success: false, error: 'Venta no encontrada' };
+
+        await row.delete();
+        return { success: true };
+    } catch (error) {
+        console.error('Error deleting venta:', error);
+        return { success: false, error: 'Error al eliminar la venta' };
+    }
+}

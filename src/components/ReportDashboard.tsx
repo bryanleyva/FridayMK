@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { deleteVenta } from '@/app/actions/leads';
 import LineProgressDashboard from "@/components/LineProgressDashboard";
 import ExecutivePerformanceChart from "@/components/ExecutivePerformanceChart";
 import PerformanceDetailsModal from "@/components/PerformanceDetailsModal";
@@ -61,6 +62,23 @@ export default function ReportDashboard({ rankingData, supRankingData, rawVentas
     const [selectedView, setSelectedView] = useState<'COMERCIAL' | 'GERENCIAL'>('COMERCIAL');
     const [showModal, setShowModal] = useState(false);
     const [showAccountsTable, setShowAccountsTable] = useState(false);
+    const [ventasList, setVentasList] = useState(rawVentas);
+    const [deletingVentaId, setDeletingVentaId] = useState<string | null>(null);
+
+    const handleDeleteVenta = async (id: string, label: string) => {
+        if (!confirm(`¿Eliminar permanentemente la venta de "${label}"? Esta acción no se puede deshacer.`)) return;
+        setDeletingVentaId(id);
+        try {
+            const res = await deleteVenta(id);
+            if (res.success) {
+                setVentasList(prev => prev.filter(v => String(v.id) !== id));
+            } else {
+                alert('Error al eliminar: ' + (res.error || 'Error desconocido'));
+            }
+        } finally {
+            setDeletingVentaId(null);
+        }
+    };
 
     // Drill-down states
     const [selectedSupervisor, setSelectedSupervisor] = useState<string | null>(null);
@@ -472,7 +490,7 @@ export default function ReportDashboard({ rankingData, supRankingData, rawVentas
                                 borderRadius: '2rem',
                                 border: '1px solid rgba(16, 185, 129, 0.2)'
                             }}>
-                                {rawVentas.length} Registros
+                                {ventasList.length} Registros
                             </span>
                         </div>
 
@@ -487,10 +505,11 @@ export default function ReportDashboard({ rankingData, supRankingData, rawVentas
                                         <th style={{ padding: '1.5rem', textAlign: 'left', fontSize: '0.85rem', textTransform: 'uppercase', opacity: 0.6, fontWeight: 900 }}>Estado</th>
                                         <th style={{ padding: '1.5rem', textAlign: 'center', fontSize: '0.85rem', textTransform: 'uppercase', opacity: 0.6, fontWeight: 900 }}>Líneas</th>
                                         <th style={{ padding: '1.5rem', textAlign: 'right', fontSize: '0.85rem', textTransform: 'uppercase', opacity: 0.6, fontWeight: 900 }}>Cargo Fijo</th>
+                                        {role === 'ADMIN' && <th style={{ padding: '1.5rem', textAlign: 'center', fontSize: '0.85rem', textTransform: 'uppercase', opacity: 0.6, fontWeight: 900, color: '#ef4444' }}>Eliminar</th>}
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {rawVentas.length > 0 ? [...rawVentas].reverse().map((r, i) => (
+                                    {ventasList.length > 0 ? [...ventasList].reverse().map((r, i) => (
                                         <tr key={i} style={{
                                             borderBottom: '1px solid rgba(255,255,255,0.03)',
                                             transition: 'all 0.2s ease',
@@ -517,10 +536,33 @@ export default function ReportDashboard({ rankingData, supRankingData, rawVentas
                                             </td>
                                             <td style={{ padding: '1.5rem', textAlign: 'center', fontWeight: 900, fontSize: '1.1rem' }}>{r.lineas}</td>
                                             <td style={{ padding: '1.5rem', textAlign: 'right', color: '#10b981', fontWeight: 800 }}>S/ {Number(r.cargoFijo || 0).toFixed(2)}</td>
+                                            {role === 'ADMIN' && (
+                                                <td style={{ padding: '1.5rem', textAlign: 'center' }}>
+                                                    <button
+                                                        disabled={deletingVentaId === String(r.id)}
+                                                        onClick={() => handleDeleteVenta(String(r.id), r.razonSocial || r.ruc || String(r.id))}
+                                                        style={{
+                                                            background: 'rgba(239,68,68,0.1)',
+                                                            border: '1px solid rgba(239,68,68,0.3)',
+                                                            color: '#ef4444',
+                                                            borderRadius: '8px',
+                                                            padding: '6px 14px',
+                                                            fontSize: '11px',
+                                                            fontWeight: 900,
+                                                            cursor: deletingVentaId === String(r.id) ? 'not-allowed' : 'pointer',
+                                                            opacity: deletingVentaId === String(r.id) ? 0.5 : 1,
+                                                            textTransform: 'uppercase',
+                                                            letterSpacing: '0.5px'
+                                                        }}
+                                                    >
+                                                        {deletingVentaId === String(r.id) ? '...' : '🗑 Eliminar'}
+                                                    </button>
+                                                </td>
+                                            )}
                                         </tr>
                                     )) : (
                                         <tr>
-                                            <td colSpan={7} style={{ padding: '6rem', textAlign: 'center' }}>
+                                            <td colSpan={role === 'ADMIN' ? 8 : 7} style={{ padding: '6rem', textAlign: 'center' }}>
                                                 <div style={{ opacity: 0.4, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem' }}>
                                                     <span style={{ fontSize: '3rem' }}>📁</span>
                                                     <p style={{ fontSize: '1.3rem', fontWeight: 700 }}>No hay registros para el periodo seleccionado.</p>

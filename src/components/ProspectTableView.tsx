@@ -11,6 +11,7 @@ interface ProspectTableViewProps {
     onEditLead: (lead: any, cardId: string) => void;
     onVerDatos: (ruc: string) => void;
     userRole: string;
+    onDeleteDeal?: (id: string) => Promise<void>;
 }
 
 export default function ProspectTableView({
@@ -21,9 +22,12 @@ export default function ProspectTableView({
     onSubirVenta,
     onEditLead,
     onVerDatos,
-    userRole
+    userRole,
+    onDeleteDeal
 }: ProspectTableViewProps) {
     const [hoveredRow, setHoveredRow] = useState<string | null>(null);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
+    const isAdmin = userRole === 'ADMIN';
 
     const getStatusColor = (status: string) => {
         const col = columns.find(c => c.id === status);
@@ -52,7 +56,7 @@ export default function ProspectTableView({
                     <tbody>
                         {leads.length === 0 ? (
                             <tr>
-                                <td colSpan={6} style={{ textAlign: 'center', padding: '100px', opacity: 0.3 }}>
+                                <td colSpan={isAdmin ? 7 : 6} style={{ textAlign: 'center', padding: '100px', opacity: 0.3 }}>
                                     <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🌑</div>
                                     <span style={{ fontWeight: 900, textTransform: 'uppercase', letterSpacing: '4px' }}>No hay registros</span>
                                 </td>
@@ -152,6 +156,33 @@ export default function ProspectTableView({
                                                 >
                                                     ✖
                                                 </button>
+
+                                                {isAdmin && onDeleteDeal && (
+                                                    <button
+                                                        className="action-btn"
+                                                        disabled={deletingId === leadId}
+                                                        onClick={async () => {
+                                                            if (!confirm(`¿Eliminar permanentemente el deal de ${lead['Razón Social'] || lead.razonSocial || leadId}?`)) return;
+                                                            setDeletingId(leadId);
+                                                            await onDeleteDeal(leadId);
+                                                            setDeletingId(null);
+                                                        }}
+                                                        title="Eliminar Deal (Admin)"
+                                                        style={{
+                                                            background: 'rgba(239,68,68,0.1)',
+                                                            border: '1px solid rgba(239,68,68,0.3)',
+                                                            color: '#ef4444',
+                                                            borderRadius: '8px',
+                                                            padding: '6px 10px',
+                                                            fontSize: '10px',
+                                                            fontWeight: 900,
+                                                            cursor: deletingId === leadId ? 'not-allowed' : 'pointer',
+                                                            opacity: deletingId === leadId ? 0.5 : 1
+                                                        }}
+                                                    >
+                                                        {deletingId === leadId ? '...' : '🗑'}
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>

@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import PipelineFilters from './PipelineFilters';
 import ProspectTableView from './ProspectTableView';
 import { AppSwal } from '@/lib/sweetalert';
-import { updatePipelineStatus, getPipelineData, updatePipelineLead, getDroppedProspects } from '@/app/actions/leads';
+import { updatePipelineStatus, getPipelineData, updatePipelineLead, getDroppedProspects, deletePipelineDeal } from '@/app/actions/leads';
 import SubirVentaModal from './SubirVentaModal';
 import DropProspectModal from './DropProspectModal';
 import LeadDataModal from './LeadDataModal';
@@ -1278,6 +1278,25 @@ export default function ProspectPipelineBoard({ leads: initialLeads, userRole, u
                                                                     >
                                                                         🔍 Datos
                                                                     </button>
+                                                                    {userRole === 'ADMIN' && (
+                                                                        <button
+                                                                            onClick={async (e) => {
+                                                                                e.stopPropagation();
+                                                                                const lid = String(lead.id || lead.ID);
+                                                                                if (!confirm(`¿Eliminar deal de ${lead['Razón Social'] || lead.razonSocial || lid}?`)) return;
+                                                                                const res = await deletePipelineDeal(lid);
+                                                                                if (res.success) {
+                                                                                    setLeads(prev => prev.filter(l => String(l.id || l.ID) !== lid));
+                                                                                } else {
+                                                                                    AppSwal.fire({ title: 'Error', text: res.error || 'No se pudo eliminar', icon: 'error', confirmButtonColor: '#ef4444' });
+                                                                                }
+                                                                            }}
+                                                                            style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', borderRadius: '8px', padding: '10px', fontSize: '12px', cursor: 'pointer' }}
+                                                                            title="Eliminar Deal"
+                                                                        >
+                                                                            🗑
+                                                                        </button>
+                                                                    )}
                                                                 </div>
                                                             )}
 
@@ -1294,6 +1313,25 @@ export default function ProspectPipelineBoard({ leads: initialLeads, userRole, u
                                                                     >
                                                                         🚀 Subir
                                                                     </button>
+                                                                    {userRole === 'ADMIN' && (
+                                                                        <button
+                                                                            onClick={async (e) => {
+                                                                                e.stopPropagation();
+                                                                                const lid = String(lead.id || lead.ID);
+                                                                                if (!confirm(`¿Eliminar deal de ${lead['Razón Social'] || lead.razonSocial || lid}?`)) return;
+                                                                                const res = await deletePipelineDeal(lid);
+                                                                                if (res.success) {
+                                                                                    setLeads(prev => prev.filter(l => String(l.id || l.ID) !== lid));
+                                                                                } else {
+                                                                                    AppSwal.fire({ title: 'Error', text: res.error || 'No se pudo eliminar', icon: 'error', confirmButtonColor: '#ef4444' });
+                                                                                }
+                                                                            }}
+                                                                            style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', borderRadius: '8px', padding: '10px', fontSize: '12px', cursor: 'pointer' }}
+                                                                            title="Eliminar Deal"
+                                                                        >
+                                                                            🗑
+                                                                        </button>
+                                                                    )}
                                                                 </div>
                                                             )}
 
@@ -1422,6 +1460,14 @@ export default function ProspectPipelineBoard({ leads: initialLeads, userRole, u
                     onEditLead={startEditing}
                     onVerDatos={handleVerDatos}
                     userRole={userRole}
+                    onDeleteDeal={async (id) => {
+                        const res = await deletePipelineDeal(id);
+                        if (res.success) {
+                            setLeads(prev => prev.filter(l => String(l.id || l.ID) !== id));
+                        } else {
+                            AppSwal.fire({ title: 'Error', text: res.error || 'No se pudo eliminar', icon: 'error', confirmButtonColor: '#ef4444' });
+                        }
+                    }}
                 />
             ) : (
                 <DroppedProspectsTable data={droppedLeads} userRole={userRole} onDelete={async (id) => {
