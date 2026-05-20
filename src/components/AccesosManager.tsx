@@ -76,8 +76,8 @@ export default function AccesosManager({ users: initialUsers, supervisors }: Pro
     };
 
     const handleSubmit = async () => {
-        if (!form.dni || !form.nombre || !form.user || !form.clave || !form.supervisor) {
-            AppSwal.fire({ title: 'Campos requeridos', text: 'Completa DNI, nombre, usuario, clave y supervisor.', icon: 'warning', confirmButtonColor: '#8b5cf6' });
+        if (!form.dni || !form.nombre || !form.user || !form.clave) {
+            AppSwal.fire({ title: 'Campos requeridos', text: 'Completa DNI, nombre, usuario y contraseña.', icon: 'warning', confirmButtonColor: '#8b5cf6' });
             return;
         }
         setIsLoading(true);
@@ -309,17 +309,34 @@ export default function AccesosManager({ users: initialUsers, supervisors }: Pro
                         {/* Supervisor y Campaña */}
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                <label style={{ fontSize: '9px', fontWeight: 900, color: '#8b5cf6', textTransform: 'uppercase', letterSpacing: '0.2em' }}>Supervisor *</label>
-                                <select
-                                    value={form.supervisor}
-                                    onChange={e => setForm(p => ({ ...p, supervisor: e.target.value }))}
-                                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: 'white', padding: '10px 14px', fontSize: '13px', outline: 'none', colorScheme: 'dark' }}
-                                >
-                                    <option value="">Seleccionar supervisor...</option>
-                                    {supervisors.map((s, i) => (
-                                        <option key={i} value={s.user}>{s.nombre || s.user}</option>
-                                    ))}
-                                </select>
+                                <label style={{ fontSize: '9px', fontWeight: 900, color: '#8b5cf6', textTransform: 'uppercase', letterSpacing: '0.2em' }}>
+                                    Supervisor <span style={{ color: 'rgba(255,255,255,0.3)', fontWeight: 600 }}>(opcional)</span>
+                                </label>
+                                {supervisors.length > 0 ? (
+                                    <select
+                                        value={form.supervisor}
+                                        onChange={e => setForm(p => ({ ...p, supervisor: e.target.value }))}
+                                        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: form.supervisor ? 'white' : 'rgba(255,255,255,0.4)', padding: '10px 14px', fontSize: '13px', outline: 'none', colorScheme: 'dark' }}
+                                    >
+                                        <option value="">Sin supervisor</option>
+                                        {supervisors.map((s, i) => (
+                                            <option key={i} value={s.user}>{s.nombre || s.user}</option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <input
+                                        type="text"
+                                        value={form.supervisor}
+                                        onChange={e => setForm(p => ({ ...p, supervisor: e.target.value }))}
+                                        placeholder="Escribir nombre del supervisor..."
+                                        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: 'white', padding: '10px 14px', fontSize: '13px', outline: 'none' }}
+                                    />
+                                )}
+                                {supervisors.length === 0 && (
+                                    <span style={{ fontSize: '9px', color: 'rgba(245,158,11,0.7)', marginTop: '2px' }}>
+                                        No hay supervisores en el sistema
+                                    </span>
+                                )}
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                 <label style={{ fontSize: '9px', fontWeight: 900, color: '#8b5cf6', textTransform: 'uppercase', letterSpacing: '0.2em' }}>Campaña *</label>
