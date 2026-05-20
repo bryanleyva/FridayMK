@@ -285,8 +285,26 @@ function GestionarVentaModal({ venta, onClose, onSaved, backofficeUser }: { vent
                         <textarea value={observacion} onChange={e => setObservacion(e.target.value)} style={{ ...input, minHeight: '80px', resize: 'vertical' }} placeholder="Comentarios del back office..." />
                     </div>
 
-                    <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', fontSize: '0.8rem', color: '#9ca3af' }}>
-                        <strong style={{ color: 'white' }}>Resumen:</strong> {venta.cantidadLineas} línea{venta.cantidadLineas > 1 ? 's' : ''} · Entrega: {venta.tipoEntrega === 'RETIRO_EN_TIENDA' ? 'Tienda' : venta.tipoEntrega} · Ejecutivo: {venta.ejecutivo}
+                    <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', fontSize: '0.8rem', color: '#9ca3af', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                        <strong style={{ color: 'white', marginBottom: '0.25rem', display: 'block' }}>Datos del cliente</strong>
+                        {[
+                            ['Tipo ingreso', venta.tipoIngreso],
+                            ['Canal', venta.canalVenta],
+                            ['Fecha nacimiento', venta.fechaNacimiento],
+                            ['Estado civil', venta.estadoCivil],
+                            ['Distrito nacimiento', venta.distritoNacimiento],
+                            ['Nombre papá', venta.nombrePapa],
+                            ['Nombre mamá', venta.nombreMama],
+                            ['Correo', venta.correo],
+                            ['Ejecutivo', venta.ejecutivo],
+                            ['Entrega', venta.tipoEntrega === 'RETIRO_EN_TIENDA' ? 'Tienda' : venta.tipoEntrega],
+                            ['Líneas', venta.cantidadLineas],
+                        ].map(([label, value]) => value ? (
+                            <div key={label as string} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.04)', paddingBottom: '0.3rem' }}>
+                                <span style={{ color: '#6b7280', textTransform: 'uppercase', fontSize: '0.75rem' }}>{label}</span>
+                                <span style={{ color: 'white', fontWeight: 500 }}>{value}</span>
+                            </div>
+                        ) : null)}
                     </div>
                 </div>
 

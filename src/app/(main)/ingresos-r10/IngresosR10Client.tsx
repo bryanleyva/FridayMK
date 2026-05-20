@@ -197,6 +197,11 @@ function IngresoDetailModal({ venta, onClose }: { venta: any; onClose: () => voi
                         {infoRow('RUC / DNI', venta.rucDni)}
                         {infoRow('Tipo ingreso', venta.tipoIngreso)}
                         {infoRow('Canal', venta.canalVenta)}
+                        {infoRow('Fecha nacimiento', venta.fechaNacimiento)}
+                        {infoRow('Estado civil', venta.estadoCivil)}
+                        {infoRow('Distrito nacimiento', venta.distritoNacimiento)}
+                        {infoRow('Nombre papá', venta.nombrePapa)}
+                        {infoRow('Nombre mamá', venta.nombreMama)}
                         {infoRow('Correo', venta.correo)}
                         {infoRow('Ejecutivo', venta.ejecutivo)}
                         {infoRow('Fecha ingreso', venta.fechaIngreso)}
