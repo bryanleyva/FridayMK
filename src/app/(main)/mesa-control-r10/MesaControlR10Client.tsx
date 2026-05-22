@@ -198,7 +198,10 @@ export default function MesaControlR10Client({ user, userRole, initialData }: Pr
 }
 
 function GestionarVentaModal({ venta, onClose, onSaved, backofficeUser }: { venta: any; onClose: () => void; onSaved: () => void; backofficeUser: string }) {
-    const [nuevoEstado, setNuevoEstado] = useState<'PENDIENTE' | 'ACTIVO' | 'RECHAZADO'>(venta.estado || 'PENDIENTE');
+    const estadoNorm = (['PENDIENTE', 'ACTIVO', 'RECHAZADO'].includes((venta.estado || '').toUpperCase())
+        ? (venta.estado || '').toUpperCase()
+        : 'PENDIENTE') as 'PENDIENTE' | 'ACTIVO' | 'RECHAZADO';
+    const [nuevoEstado, setNuevoEstado] = useState<'PENDIENTE' | 'ACTIVO' | 'RECHAZADO'>(estadoNorm);
     const [observacion, setObservacion] = useState(venta.observacionBo || '');
     const [motivoRechazo, setMotivoRechazo] = useState(venta.motivoRechazo || '');
     const [saving, setSaving] = useState(false);

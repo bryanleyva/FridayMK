@@ -1523,6 +1523,42 @@ export async function createUser(data: {
     }
 }
 
+export async function updateUser(dni: string, data: {
+    nombre?: string;
+    clave?: string;
+    supervisor?: string;
+    campana?: string;
+    telefono?: string;
+    rol?: string;
+}) {
+    try {
+        await loadDoc();
+        const sheet = doc.sheetsByTitle['USUARIOS'];
+        if (!sheet) return { success: false, error: 'Hoja USUARIOS no encontrada' };
+
+        const rows = await sheet.getRows();
+        const row = rows.find(r => r.get('DNI')?.trim() === dni.trim());
+        if (!row) return { success: false, error: 'Usuario no encontrado' };
+
+        if (data.nombre !== undefined) row.set('NOMBRES COMPLETOS', data.nombre);
+        if (data.clave !== undefined && data.clave.trim()) row.set('CLAVE', data.clave.trim());
+        if (data.supervisor !== undefined) row.set('SUPERVISOR', data.supervisor);
+        if (data.campana !== undefined) row.set('CAMPAÑA', data.campana);
+        if (data.telefono !== undefined) row.set('TELEFONO', data.telefono);
+        if (data.rol !== undefined) row.set('ROL', data.rol);
+
+        await row.save();
+
+        const userCache = UserCache.getInstance();
+        await userCache.refresh();
+
+        return { success: true };
+    } catch (error) {
+        console.error('Error updating user:', error);
+        return { success: false, error: 'Error al actualizar el usuario' };
+    }
+}
+
 export async function getUnassignedLeads(limit: number = 50) {
     try {
         const cache = LeadCache.getInstance();

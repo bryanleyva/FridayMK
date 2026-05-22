@@ -178,8 +178,8 @@ function IngresoDetailModal({ venta, onClose }: { venta: any; onClose: () => voi
                 </div>
 
                 <div style={{ padding: '1.5rem 2rem', overflowY: 'auto', flex: 1 }}>
-                    {venta.estado === 'RECHAZADO' && venta.motivoRechazo && (
-                        <div style={{ padding: '1rem', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', marginBottom: '1.5rem' }}>
+                    {venta.motivoRechazo && (
+                        <div style={{ padding: '1rem', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', marginBottom: '1rem' }}>
                             <div style={{ color: '#ef4444', fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.25rem' }}>MOTIVO DE RECHAZO</div>
                             <div style={{ color: 'white', fontSize: '0.9rem' }}>{venta.motivoRechazo}</div>
                         </div>
