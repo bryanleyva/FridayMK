@@ -37,6 +37,26 @@ async function getNextVentaId(sheetTitle: string): Promise<number> {
     return ids.length > 0 ? Math.max(...ids) + 1 : 1;
 }
 
+/**
+ * Asegura que la hoja tenga todas las columnas requeridas en su cabecera.
+ * Si falta alguna, la agrega al final con setHeaderRow (sin eliminar las existentes).
+ * Necesario porque google-spreadsheet ignora silenciosamente row.set('X', v) si X
+ * no está en los headers, lo que provoca que datos como MOTIVO_RECHAZO no se persistan.
+ */
+async function ensureHeaders(sheet: any, requiredHeaders: string[]): Promise<void> {
+    try {
+        await sheet.loadHeaderRow();
+    } catch {
+        // Si no hay header todavía
+    }
+    const current: string[] = sheet.headerValues || [];
+    const missing = requiredHeaders.filter(h => !current.includes(h));
+    if (missing.length > 0) {
+        console.log(`[ensureHeaders] Agregando columnas faltantes a "${sheet.title}":`, missing);
+        await sheet.setHeaderRow([...current, ...missing]);
+    }
+}
+
 // ============================================
 // TIPOS
 // ============================================
@@ -386,6 +406,21 @@ export async function culminarVentaR10(ventaId: string, data: CulminarVentaInput
             return { success: false, error: 'Venta no encontrada o ya procesada' };
         }
 
+        // Asegurar que la hoja INGRESADOS_R10 tenga todas las columnas que vamos a escribir.
+        // Sin esto, google-spreadsheet ignora silenciosamente los campos cuyas columnas no existen.
+        await ensureHeaders(ingresadosSheet, [
+            'ID', 'VENTA_ID', 'LINEA_NUM', 'FECHA_INGRESO', 'FECHA_CIERRE',
+            'EJECUTIVO', 'SUPERVISOR', 'CAMPAÑA', 'ESTADO', 'CANAL_VENTA',
+            'RUC_DNI', 'TIPO_INGRESO', 'NOMBRES_APELLIDOS', 'FECHA_NACIMIENTO',
+            'ESTADO_CIVIL', 'DISTRITO_NACIMIENTO', 'NOMBRE_PAPA', 'NOMBRE_MAMA',
+            'CORREO', 'TIPO_VENTA', 'NUMERO_PORTAR', 'OPERADOR_ACTUAL',
+            'MODALIDAD_OPERADOR', 'PLAN', 'PROMOCION_BRINDADA', 'TIPO_ENTREGA',
+            'NUMERO_CONTACTO', 'DIRECCION_ENTREGA', 'REFERENCIA_ENTREGA',
+            'COORDENADAS', 'TIPO_ENVIO', 'FECHA_ENVIO', 'RANGO_ENVIO',
+            'PDV_TIENDA', 'OBSERVACION', 'FECHA_ACTIVACION',
+            'MESA_CONTROL_ASIGNADO', 'OBSERVACION_BO', 'MOTIVO_RECHAZO',
+        ]);
+
         const fechaCierre = getPeruTimestamp();
         let nextIngresadosId = await getNextId('INGRESADOS_R10');
 
@@ -513,6 +548,17 @@ export async function updateEstadoIngresadoR10(
         const sheet = doc.sheetsByTitle['INGRESADOS_R10'];
         if (!sheet) return { success: false, error: 'Hoja INGRESADOS_R10 no encontrada' };
 
+        // Asegura que las columnas que vamos a escribir existan en la hoja.
+        // Si faltan (caso típico cuando se introdujo la feature después de crear la hoja),
+        // google-spreadsheet ignoraría silenciosamente los row.set() y los datos no se guardarían.
+        await ensureHeaders(sheet, [
+            'ESTADO',
+            'MESA_CONTROL_ASIGNADO',
+            'OBSERVACION_BO',
+            'MOTIVO_RECHAZO',
+            'FECHA_ACTIVACION',
+        ]);
+
         const rows = await sheet.getRows();
         const lineas = rows.filter(r => r.get('VENTA_ID') === ventaId);
 
@@ -521,15 +567,22 @@ export async function updateEstadoIngresadoR10(
         }
 
         const fechaActivacion = nuevoEstado === 'ACTIVO' ? getPeruTimestamp() : '';
+        let lineasActualizadas = 0;
 
         for (const linea of lineas) {
             linea.set('ESTADO', nuevoEstado);
             linea.set('MESA_CONTROL_ASIGNADO', backofficeUser);
             if (observacion !== undefined) linea.set('OBSERVACION_BO', observacion);
-            if (nuevoEstado === 'RECHAZADO' && motivoRechazo) linea.set('MOTIVO_RECHAZO', motivoRechazo);
+            if (nuevoEstado === 'RECHAZADO') {
+                // Siempre setear (aunque sea string vacío) para limpiar valor previo si se cambió de estado
+                linea.set('MOTIVO_RECHAZO', motivoRechazo || '');
+            }
             if (nuevoEstado === 'ACTIVO') linea.set('FECHA_ACTIVACION', fechaActivacion);
             await linea.save();
+            lineasActualizadas++;
         }
+
+        console.log(`[updateEstadoIngresadoR10] venta=${ventaId} estado=${nuevoEstado} motivo="${motivoRechazo || ''}" lineas=${lineasActualizadas}`);
 
         return { success: true };
     } catch (error: any) {
