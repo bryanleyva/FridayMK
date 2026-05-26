@@ -51,10 +51,23 @@ async function ensureHeaders(sheet: any, requiredHeaders: string[]): Promise<voi
     }
     const current: string[] = sheet.headerValues || [];
     const missing = requiredHeaders.filter(h => !current.includes(h));
-    if (missing.length > 0) {
-        console.log(`[ensureHeaders] Agregando columnas faltantes a "${sheet.title}":`, missing);
-        await sheet.setHeaderRow([...current, ...missing]);
+    if (missing.length === 0) return;
+
+    const newHeaders = [...current, ...missing];
+    const totalCols = newHeaders.length;
+
+    // El grid de Google Sheets tiene un número fijo de columnas; si no alcanza,
+    // setHeaderRow tira: "Sheet is not large enough to fit N columns. Resize the sheet first."
+    // Por eso resizeamos primero conservando rowCount.
+    const currentColCount = (sheet as any).columnCount ?? 0;
+    if (currentColCount < totalCols) {
+        const currentRowCount = (sheet as any).rowCount ?? 1000;
+        console.log(`[ensureHeaders] Resize "${sheet.title}" cols ${currentColCount} -> ${totalCols}`);
+        await sheet.resize({ rowCount: currentRowCount, columnCount: totalCols });
     }
+
+    console.log(`[ensureHeaders] Agregando columnas faltantes a "${sheet.title}":`, missing);
+    await sheet.setHeaderRow(newHeaders);
 }
 
 // ============================================
