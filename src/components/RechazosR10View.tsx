@@ -9,12 +9,8 @@ interface Props {
     rechazos: any[];
 }
 
-const TABS = ['RECHAZOS'] as const;
-type TabKey = typeof TABS[number];
-
-export default function LinkerR10Client({ user, userRole, rechazos: initRechazos }: Props) {
+export default function RechazosR10View({ user, userRole, rechazos: initRechazos }: Props) {
     const [rechazos, setRechazos] = useState(initRechazos);
-    const [tab, setTab] = useState<TabKey>('RECHAZOS');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [search, setSearch] = useState('');
@@ -86,15 +82,15 @@ export default function LinkerR10Client({ user, userRole, rechazos: initRechazos
     };
 
     return (
-        <div style={{ minHeight: 'calc(100vh - 120px)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {/* Header */}
             <div style={{ ...panelStyle, display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <div style={{ width: '6px', height: '40px', background: '#10b981', borderRadius: '3px', boxShadow: '0 0 20px #10b981' }} />
+                    <div style={{ width: '6px', height: '40px', background: '#ef4444', borderRadius: '3px', boxShadow: '0 0 20px #ef4444' }} />
                     <div>
-                        <h2 style={{ color: 'white', fontWeight: 900, fontSize: '1.5rem', margin: 0, textTransform: 'uppercase', letterSpacing: '-0.01em' }}>
-                            Linker R10
-                        </h2>
+                        <h3 style={{ color: 'white', fontWeight: 900, fontSize: '1.25rem', margin: 0, textTransform: 'uppercase', letterSpacing: '-0.01em' }}>
+                            Rechazos R10
+                        </h3>
                         <p style={{ color: '#6b7280', fontSize: '0.8rem', margin: '0.25rem 0 0' }}>
                             Auditoría de cuentas rechazadas · {userRole === 'ADMIN' ? 'Vista global' : 'Vista de equipo'}
                         </p>
@@ -105,34 +101,7 @@ export default function LinkerR10Client({ user, userRole, rechazos: initRechazos
                 </span>
             </div>
 
-            {/* Tabs */}
-            <div style={{ ...panelStyle, display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                {TABS.map(t => {
-                    const isActive = tab === t;
-                    return (
-                        <button
-                            key={t}
-                            onClick={() => setTab(t)}
-                            style={{
-                                padding: '0.5rem 1rem',
-                                background: isActive ? 'rgba(239,68,68,0.18)' : 'rgba(255,255,255,0.03)',
-                                border: `1px solid ${isActive ? '#ef4444' : 'rgba(255,255,255,0.08)'}`,
-                                borderRadius: '8px',
-                                color: isActive ? '#ef4444' : '#9ca3af',
-                                cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem',
-                                display: 'flex', gap: '0.5rem', alignItems: 'center',
-                            }}
-                        >
-                            <span>{t}</span>
-                            <span style={{ background: 'rgba(0,0,0,0.3)', padding: '0.1rem 0.5rem', borderRadius: '999px', fontSize: '0.75rem' }}>
-                                {rechazos.length}
-                            </span>
-                        </button>
-                    );
-                })}
-            </div>
-
-            {/* KPIs rápidos */}
+            {/* KPIs */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.75rem' }}>
                 <KpiCard label="Total rechazos" value={filtered.length} color="#ef4444" highlight />
                 <KpiCard label="Líneas perdidas" value={totalLineas} color="#f97316" />
@@ -142,19 +111,11 @@ export default function LinkerR10Client({ user, userRole, rechazos: initRechazos
 
             {/* Filtros */}
             <div style={{ ...panelStyle, display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
-                <select
-                    value={filterExec}
-                    onChange={e => setFilterExec(e.target.value)}
-                    style={selectStyle}
-                >
+                <select value={filterExec} onChange={e => setFilterExec(e.target.value)} style={selectStyle}>
                     <option value="TODOS" style={optStyle}>Todos los ejecutivos</option>
                     {ejecutivos.map(e => <option key={e} value={e} style={optStyle}>{e}</option>)}
                 </select>
-                <select
-                    value={filterMotivo}
-                    onChange={e => setFilterMotivo(e.target.value)}
-                    style={selectStyle}
-                >
+                <select value={filterMotivo} onChange={e => setFilterMotivo(e.target.value)} style={selectStyle}>
                     <option value="TODOS" style={optStyle}>Todos los motivos</option>
                     {motivos.map(m => <option key={m} value={m} style={optStyle}>{m}</option>)}
                 </select>
@@ -178,9 +139,9 @@ export default function LinkerR10Client({ user, userRole, rechazos: initRechazos
 
             {/* Ranking de motivos */}
             <div style={panelStyle}>
-                <h3 style={{ color: '#ef4444', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1rem' }}>
+                <h4 style={{ color: '#ef4444', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1rem' }}>
                     Ranking de motivos de rechazo
-                </h3>
+                </h4>
                 {motivosTop.length === 0 ? (
                     <p style={{ color: '#6b7280', textAlign: 'center', padding: '1.5rem 0', fontSize: '0.85rem' }}>Sin rechazos con estos filtros</p>
                 ) : (
@@ -212,9 +173,9 @@ export default function LinkerR10Client({ user, userRole, rechazos: initRechazos
 
             {/* Tabla de rechazos */}
             <div style={{ ...panelStyle, flex: 1, overflow: 'auto' }}>
-                <h3 style={{ color: '#ef4444', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1rem' }}>
+                <h4 style={{ color: '#ef4444', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1rem' }}>
                     Cuentas rechazadas ({filtered.length})
-                </h3>
+                </h4>
                 {filtered.length === 0 ? (
                     <p style={{ color: '#6b7280', textAlign: 'center', padding: '3rem 0', fontSize: '0.9rem' }}>
                         Sin cuentas rechazadas con estos filtros.

@@ -42,7 +42,6 @@ export default function Navbar({ userRole, userName, userCargo, userPhoto, userC
         { name: 'Ingresos ', path: '/ingresos-r10', campaign: 'R10', roles: ['STANDAR', 'SPECIAL', 'ADMIN'] },
         { name: 'Mesa Control R10', path: '/mesa-control-r10', campaign: 'R10', roles: ['BACKOFFICE', 'ADMIN'] },
         { name: 'Supervisor R10', path: '/supervisor-r10', campaign: 'R10', roles: ['SPECIAL', 'ADMIN'] },
-        { name: 'Linker R10', path: '/linker-r10', campaign: 'R10', roles: ['SPECIAL', 'ADMIN'] },
         { name: 'Reporte R10', path: '/reporte-r10', campaign: 'R10' },
         // --- Compartido ---
         { name: 'Reporte', path: '/reporte', campaign: 'ALL' },
@@ -62,6 +61,9 @@ export default function Navbar({ userRole, userName, userCargo, userPhoto, userC
 
         // Filtrado por campaña
         if (item.campaign === 'ALL') return true;
+        // Excepción: Linker (R20) también es visible para supervisores/admins con R10
+        // ya que dentro de Linker pueden ver la pestaña de "Rechazos R10"
+        if (item.path === '/linker' && hasR10 && (userRole === 'SPECIAL' || userRole === 'ADMIN')) return true;
         if (item.campaign === 'R20' && hasR20) return true;
         if (item.campaign === 'R10' && hasR10) return true;
         return false;
