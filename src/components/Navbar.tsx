@@ -42,6 +42,7 @@ export default function Navbar({ userRole, userName, userCargo, userPhoto, userC
         { name: 'Ingresos ', path: '/ingresos-r10', campaign: 'R10', roles: ['STANDAR', 'SPECIAL', 'ADMIN'] },
         { name: 'Mesa Control R10', path: '/mesa-control-r10', campaign: 'R10', roles: ['BACKOFFICE', 'ADMIN'] },
         { name: 'Supervisor R10', path: '/supervisor-r10', campaign: 'R10', roles: ['SPECIAL', 'ADMIN'] },
+        { name: 'Linker R10', path: '/linker-r10', campaign: 'R10', roles: ['SPECIAL', 'ADMIN'] },
         { name: 'Reporte R10', path: '/reporte-r10', campaign: 'R10' },
         // --- Compartido ---
         { name: 'Reporte', path: '/reporte', campaign: 'ALL' },
