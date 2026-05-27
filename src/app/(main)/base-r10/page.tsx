@@ -21,6 +21,14 @@ export default async function BaseR10Page() {
     let libreLeads: any[] = [];
     let teamMembers: { user: string; nombre: string }[] = [];
 
+    // Normaliza para comparar: quita tildes, espacios extra y pone en mayúsculas.
+    const norm = (s: any): string =>
+        (s || '').toString().trim().toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+    // ¿El usuario tiene R10 en su lista de campañas? Soporta "R10", "R10,R20", "R20, R10", etc.
+    const tieneR10 = (campania: any): boolean =>
+        norm(campania).split(/[,;\s]+/).filter(Boolean).includes('R10');
+
     if (role === 'ADMIN' || role === 'SPECIAL') {
         const [libre, allUsers] = await Promise.all([
             getBaseLibreR10(userName, role),
@@ -28,18 +36,21 @@ export default async function BaseR10Page() {
         ]);
         libreLeads = libre;
 
+        const supervisorNorm = norm(userName);
+        const standarR10 = allUsers.filter((u: any) =>
+            norm(u.rol) === 'STANDAR' && tieneR10(u.campana)
+        );
+
         if (role === 'ADMIN') {
-            teamMembers = allUsers
-                .filter((u: any) => (u.rol || '').trim().toUpperCase() === 'STANDAR')
-                .map((u: any) => ({ user: u.user, nombre: u.nombre }));
+            teamMembers = standarR10.map((u: any) => ({ user: u.user, nombre: u.nombre }));
         } else {
-            teamMembers = allUsers
-                .filter((u: any) =>
-                    (u.supervisor || '').trim().toUpperCase() === userName.trim().toUpperCase() &&
-                    (u.rol || '').trim().toUpperCase() === 'STANDAR'
-                )
+            // SPECIAL: solo su equipo (ejecutivos cuyo SUPERVISOR coincida con su nombre)
+            teamMembers = standarR10
+                .filter((u: any) => norm(u.supervisor) === supervisorNorm)
                 .map((u: any) => ({ user: u.user, nombre: u.nombre }));
         }
+
+        console.log(`[BaseR10Page] role=${role} userName="${userName}" allUsers=${allUsers.length} standarR10=${standarR10.length} teamMembers=${teamMembers.length}`);
     }
 
     const miBase = (await getMiBaseR10(userName)) as any[];

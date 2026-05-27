@@ -384,7 +384,9 @@ export default function BaseR10Client({ userRole, userName, libreLeads, teamMemb
                             {teamMembers
                                 .filter(m => (m.nombre || m.user))
                                 .map(m => (
-                                    <option key={m.user || m.nombre} value={m.user || m.nombre}>{m.nombre || m.user}</option>
+                                    // value = nombre completo (no user/login) porque getMiBaseR10
+                                    // filtra por session.user.name que es el NOMBRE COMPLETO
+                                    <option key={m.nombre || m.user} value={m.nombre || m.user}>{m.nombre || m.user}</option>
                                 ))}
                         </select>
                         <button onClick={seleccionar10} style={btnGray}>Seleccionar 10</button>

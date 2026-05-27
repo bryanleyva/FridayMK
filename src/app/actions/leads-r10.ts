@@ -764,6 +764,21 @@ export async function asignarLeadsR10(ids: string[], ejecutivo: string, supervis
         await loadDoc();
         const sheet = await ensureSheet('BASE_R10');
 
+        // Resolver el "ejecutivo" recibido a su NOMBRE COMPLETO (lo que NextAuth pone en session.user.name).
+        // Si llega el USER de login (legacy), buscamos el nombre real en UserCache para mantener consistencia
+        // con el resto del código (getMiBaseR10, INTERESADOS_R10, etc. siempre usan nombre completo).
+        const userCache = UserCache.getInstance();
+        await userCache.ensureInitialized();
+        const allUsersRows = userCache.getAll();
+        const normEjecutivo = (ejecutivo || '').trim().toLowerCase();
+        const matched = allUsersRows.find(r =>
+            (r.get('NOMBRES COMPLETOS') || '').trim().toLowerCase() === normEjecutivo ||
+            (r.get('USER') || '').trim().toLowerCase() === normEjecutivo
+        );
+        const ejecutivoNombreCompleto = matched
+            ? (matched.get('NOMBRES COMPLETOS') || ejecutivo)
+            : ejecutivo;
+
         const rows = await sheet.getRows();
         const fechaAsignacion = getPeruTimestamp();
 
@@ -771,13 +786,14 @@ export async function asignarLeadsR10(ids: string[], ejecutivo: string, supervis
             const row = rows.find(r => r.get('ID') === id && r.get('ESTADO') === 'LIBRE');
             if (row) {
                 row.set('ESTADO', 'ASIGNADO');
-                row.set('EJECUTIVO', ejecutivo);
+                row.set('EJECUTIVO', ejecutivoNombreCompleto);
                 row.set('SUPERVISOR', supervisor);
                 row.set('FECHA_ASIGNACION', fechaAsignacion);
                 await row.save();
             }
         }
 
+        console.log(`[asignarLeadsR10] ${ids.length} leads -> "${ejecutivoNombreCompleto}" (entrada: "${ejecutivo}")`);
         return { success: true };
     } catch (error: any) {
         console.error('Error en asignarLeadsR10:', error);
@@ -798,8 +814,20 @@ export async function getMiBaseR10(userName: string) {
         const rows = await sheet.getRows();
         const normUser = (userName || '').toLowerCase().trim();
 
+        // Tolerar leads asignados con USER (login) en lugar de NOMBRES COMPLETOS:
+        // construimos un set con ambos identificadores del usuario actual.
+        const userCache = UserCache.getInstance();
+        await userCache.ensureInitialized();
+        const userRow = userCache.findUser(userName);
+        const identifiers = new Set<string>([normUser]);
+        if (userRow) {
+            identifiers.add(((userRow as any).get('USER') || '').toLowerCase().trim());
+            identifiers.add(((userRow as any).get('NOMBRES COMPLETOS') || '').toLowerCase().trim());
+        }
+        identifiers.delete('');
+
         return rows
-            .filter(r => (r.get('EJECUTIVO') || '').toLowerCase().trim() === normUser && r.get('ESTADO') === 'ASIGNADO')
+            .filter(r => identifiers.has((r.get('EJECUTIVO') || '').toLowerCase().trim()) && r.get('ESTADO') === 'ASIGNADO')
             .map(r => ({
                 id: r.get('ID') || '',
                 dni: r.get('DNI') || '',
