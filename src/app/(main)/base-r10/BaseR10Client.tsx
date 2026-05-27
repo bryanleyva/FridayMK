@@ -380,13 +380,21 @@ export default function BaseR10Client({ userRole, userName, libreLeads, teamMemb
                             onChange={e => setEjecutivoSeleccionado(e.target.value)}
                             style={{ ...inputStyle, width: 'auto', minWidth: '220px', colorScheme: 'dark' }}
                         >
-                            <option value="">{teamMembers.length === 0 ? '— Sin ejecutivos en tu equipo —' : `— Seleccionar ejecutivo (${teamMembers.length}) —`}</option>
+                            <option value="" style={{ background: '#0a0a0b', color: 'white' }}>
+                                {teamMembers.length === 0 ? '— Sin ejecutivos en tu equipo —' : `— Seleccionar ejecutivo (${teamMembers.length}) —`}
+                            </option>
                             {teamMembers
                                 .filter(m => (m.nombre || m.user))
                                 .map(m => (
                                     // value = nombre completo (no user/login) porque getMiBaseR10
                                     // filtra por session.user.name que es el NOMBRE COMPLETO
-                                    <option key={m.nombre || m.user} value={m.nombre || m.user}>{m.nombre || m.user}</option>
+                                    <option
+                                        key={m.nombre || m.user}
+                                        value={m.nombre || m.user}
+                                        style={{ background: '#0a0a0b', color: 'white' }}
+                                    >
+                                        {m.nombre || m.user}
+                                    </option>
                                 ))}
                         </select>
                         <button onClick={seleccionar10} style={btnGray}>Seleccionar 10</button>
