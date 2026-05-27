@@ -649,12 +649,29 @@ export async function uploadBaseR10Excel(base64: string): Promise<{ success: boo
             colMap[key] = colNum;
         });
 
+        // Convierte cualquier valor que devuelva ExcelJS (string, número, hyperlink, richText, fórmula) a texto plano.
+        // Sin esto, los correos que vienen como hipervínculo (mailto:) se guardan como "[object Object]".
+        const cellToText = (cell: any): string => {
+            if (!cell) return '';
+            if (typeof cell.text === 'string' && cell.text.trim()) return cell.text.trim();
+            const v = cell.value;
+            if (v === null || v === undefined) return '';
+            if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return String(v).trim();
+            if (typeof v === 'object') {
+                if (typeof (v as any).text === 'string') return String((v as any).text).trim();
+                if (Array.isArray((v as any).richText)) return (v as any).richText.map((t: any) => t.text || '').join('').trim();
+                if ((v as any).result !== undefined) return String((v as any).result).trim();
+                if (typeof (v as any).hyperlink === 'string') return String((v as any).hyperlink).replace(/^mailto:/i, '').trim();
+            }
+            return String(v).trim();
+        };
+
         const getCol = (row: any, aliases: string[]): string => {
             for (const alias of aliases) {
                 const ci = colMap[alias];
                 if (ci) {
-                    const v = row.getCell(ci).value;
-                    if (v !== null && v !== undefined) return String(v).trim();
+                    const text = cellToText(row.getCell(ci));
+                    if (text) return text;
                 }
             }
             return '';
@@ -807,7 +824,7 @@ export async function getMiBaseR10(userName: string) {
 // BASE R10: Marcar como gestionado
 // ============================================
 
-export async function marcarGestionadoR10(id: string): Promise<{ success: boolean; error?: string }> {
+export async function marcarGestionadoR10(id: string, nuevoEstado: string = 'GESTIONADO'): Promise<{ success: boolean; error?: string }> {
     try {
         await loadDoc();
         const sheet = await ensureSheet('BASE_R10');
@@ -816,11 +833,19 @@ export async function marcarGestionadoR10(id: string): Promise<{ success: boolea
         const row = rows.find((r: any) => r.get('ID') === id);
         if (!row) return { success: false, error: 'Lead no encontrado' };
 
-        row.set('ESTADO', 'GESTIONADO');
+        row.set('ESTADO', nuevoEstado);
         await row.save();
         return { success: true };
     } catch (error: any) {
         console.error('Error en marcarGestionadoR10:', error);
         return { success: false, error: error.message || 'Error' };
     }
+}
+
+/**
+ * Marca un lead BASE_R10 como NO_INTERESADO (botón "No interesado" en modo llamada).
+ * Igual que GESTIONADO en cuanto a flujo: lo saca de "Mi base" del ejecutivo.
+ */
+export async function marcarNoInteresadoR10(id: string): Promise<{ success: boolean; error?: string }> {
+    return marcarGestionadoR10(id, 'NO_INTERESADO');
 }

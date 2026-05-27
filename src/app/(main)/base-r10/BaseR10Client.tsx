@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { uploadBaseR10Excel, asignarLeadsR10, getMiBaseR10, marcarGestionadoR10 } from '@/app/actions/leads-r10';
+import { uploadBaseR10Excel, asignarLeadsR10, getMiBaseR10, marcarGestionadoR10, marcarNoInteresadoR10 } from '@/app/actions/leads-r10';
 import SubirVentaModalR10 from '@/components/SubirVentaModalR10';
 import { AppSwal } from '@/lib/sweetalert';
 
@@ -67,6 +67,9 @@ export default function BaseR10Client({ userRole, userName, libreLeads, teamMemb
     const [busquedaMiBase, setBusquedaMiBase] = useState('');
     const [ventaModalOpen, setVentaModalOpen] = useState(false);
     const [ventaLead, setVentaLead] = useState<LeadAsignado | null>(null);
+    const [miBaseView, setMiBaseView] = useState<'llamada' | 'tabla'>('llamada');
+    const [indiceLlamada, setIndiceLlamada] = useState(0);
+    const [marcandoNoInteresado, setMarcandoNoInteresado] = useState(false);
 
     const refreshMiBase = async () => {
         const data = await getMiBaseR10(userName);
@@ -154,9 +157,52 @@ export default function BaseR10Client({ userRole, userName, libreLeads, teamMemb
         if (baseLeadId) {
             await marcarGestionadoR10(baseLeadId);
             setMiBase(prev => prev.filter(l => l.id !== baseLeadId));
+            setIndiceLlamada(idx => Math.max(0, Math.min(idx, miBase.length - 2)));
         } else {
             await refreshMiBase();
         }
+    };
+
+    // Modo llamada: marcar como no interesado y pasar al siguiente
+    const handleNoInteresado = async () => {
+        const lead = miBaseFiltered[indiceLlamada];
+        if (!lead) return;
+        const ok = await AppSwal.fire({
+            icon: 'question',
+            title: '¿Marcar como No interesado?',
+            text: lead.nombre,
+            showCancelButton: true,
+            confirmButtonText: 'Sí, no interesado',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#ef4444',
+        });
+        if (!ok.isConfirmed) return;
+        setMarcandoNoInteresado(true);
+        try {
+            const res = await marcarNoInteresadoR10(lead.id);
+            if (res.success) {
+                setMiBase(prev => prev.filter(l => l.id !== lead.id));
+                setIndiceLlamada(idx => Math.max(0, Math.min(idx, miBase.length - 2)));
+            } else {
+                AppSwal.fire({ icon: 'error', title: 'Error', text: res.error });
+            }
+        } finally {
+            setMarcandoNoInteresado(false);
+        }
+    };
+
+    const handleInteresado = () => {
+        const lead = miBaseFiltered[indiceLlamada];
+        if (!lead) return;
+        setVentaLead(lead);
+        setVentaModalOpen(true);
+    };
+
+    const handleSiguiente = () => {
+        if (indiceLlamada < miBaseFiltered.length - 1) setIndiceLlamada(idx => idx + 1);
+    };
+    const handleAnterior = () => {
+        if (indiceLlamada > 0) setIndiceLlamada(idx => idx - 1);
     };
 
     // Filtros
@@ -332,12 +378,14 @@ export default function BaseR10Client({ userRole, userName, libreLeads, teamMemb
                         <select
                             value={ejecutivoSeleccionado}
                             onChange={e => setEjecutivoSeleccionado(e.target.value)}
-                            style={{ ...inputStyle, width: 'auto', minWidth: '180px', colorScheme: 'dark' }}
+                            style={{ ...inputStyle, width: 'auto', minWidth: '220px', colorScheme: 'dark' }}
                         >
-                            <option value="">— Seleccionar ejecutivo —</option>
-                            {teamMembers.map(m => (
-                                <option key={m.user} value={m.user}>{m.nombre || m.user}</option>
-                            ))}
+                            <option value="">{teamMembers.length === 0 ? '— Sin ejecutivos en tu equipo —' : `— Seleccionar ejecutivo (${teamMembers.length}) —`}</option>
+                            {teamMembers
+                                .filter(m => (m.nombre || m.user))
+                                .map(m => (
+                                    <option key={m.user || m.nombre} value={m.user || m.nombre}>{m.nombre || m.user}</option>
+                                ))}
                         </select>
                         <button onClick={seleccionar10} style={btnGray}>Seleccionar 10</button>
                         <button onClick={seleccionarTodos} style={btnGray}>
@@ -416,64 +464,200 @@ export default function BaseR10Client({ userRole, userName, libreLeads, teamMemb
             )}
 
             {/* ===== TAB: MI BASE ===== */}
-            {activeTab === 'mi-base' && (
+            {activeTab === 'mi-base' && (() => {
+                const currentLead = miBaseFiltered[indiceLlamada];
+                return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div style={{ ...cardStyle, display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                    {/* Switch vista llamada / tabla + búsqueda */}
+                    <div style={{ ...cardStyle, display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', background: 'rgba(0,0,0,0.3)', borderRadius: '8px', padding: '3px' }}>
+                            <button
+                                onClick={() => { setMiBaseView('llamada'); setIndiceLlamada(0); }}
+                                style={{
+                                    padding: '0.45rem 0.95rem', border: 'none', borderRadius: '6px',
+                                    background: miBaseView === 'llamada' ? '#10b981' : 'transparent',
+                                    color: miBaseView === 'llamada' ? 'white' : '#9ca3af',
+                                    cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem',
+                                }}
+                            >
+                                📞 Modo Llamada
+                            </button>
+                            <button
+                                onClick={() => setMiBaseView('tabla')}
+                                style={{
+                                    padding: '0.45rem 0.95rem', border: 'none', borderRadius: '6px',
+                                    background: miBaseView === 'tabla' ? '#10b981' : 'transparent',
+                                    color: miBaseView === 'tabla' ? 'white' : '#9ca3af',
+                                    cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem',
+                                }}
+                            >
+                                📋 Tabla
+                            </button>
+                        </div>
                         <input
                             type="text"
                             placeholder="Buscar por DNI, nombre o teléfono..."
                             value={busquedaMiBase}
-                            onChange={e => setBusquedaMiBase(e.target.value)}
-                            style={{ ...inputStyle, flex: '1' }}
+                            onChange={e => { setBusquedaMiBase(e.target.value); setIndiceLlamada(0); }}
+                            style={{ ...inputStyle, flex: '1', minWidth: '200px' }}
                         />
                         <span style={{ color: '#6b7280', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
                             {miBaseFiltered.length} leads asignados
                         </span>
                     </div>
 
-                    <div style={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-                            <thead>
-                                <tr style={{ background: 'rgba(255,255,255,0.04)' }}>
-                                    {['DNI', 'Nombre', 'Teléfono', 'Correo', 'Ubicación', 'Líneas', 'Operador', 'Asignado', 'Acción'].map(h => (
-                                        <th key={h} style={{ padding: '0.75rem 1rem', textAlign: 'left', color: '#9ca3af', fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {miBaseFiltered.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={9} style={{ padding: '3rem', textAlign: 'center', color: '#4b5563' }}>
-                                            {miBase.length === 0
-                                                ? 'No tienes leads asignados. Espera a que tu supervisor te asigne algunos.'
-                                                : 'Sin resultados para la búsqueda'}
-                                        </td>
-                                    </tr>
-                                ) : miBaseFiltered.map(lead => (
-                                    <tr key={lead.id} style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-                                        <td style={{ padding: '0.65rem 1rem', color: '#d1d5db', fontFamily: 'monospace' }}>{lead.dni}</td>
-                                        <td style={{ padding: '0.65rem 1rem', color: 'white', fontWeight: 600 }}>{lead.nombre}</td>
-                                        <td style={{ padding: '0.65rem 1rem', color: '#10b981', fontFamily: 'monospace' }}>{lead.telefono}</td>
-                                        <td style={{ padding: '0.65rem 1rem', color: '#9ca3af', fontSize: '0.8rem' }}>{lead.correo}</td>
-                                        <td style={{ padding: '0.65rem 1rem', color: '#9ca3af' }}>{[lead.departamento, lead.provincia, lead.distrito].filter(Boolean).join(', ')}</td>
-                                        <td style={{ padding: '0.65rem 1rem', color: '#d1d5db', textAlign: 'center' }}>{lead.lineasActuales}</td>
-                                        <td style={{ padding: '0.65rem 1rem', color: '#d1d5db' }}>{lead.operadorActual}</td>
-                                        <td style={{ padding: '0.65rem 1rem', color: '#6b7280', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{lead.fechaAsignacion}</td>
-                                        <td style={{ padding: '0.65rem 1rem' }}>
+                    {/* ===== Vista: Modo Llamada ===== */}
+                    {miBaseView === 'llamada' && (
+                        <>
+                            {miBaseFiltered.length === 0 ? (
+                                <div style={{ ...cardStyle, padding: '4rem 2rem', textAlign: 'center', color: '#4b5563' }}>
+                                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📭</div>
+                                    {miBase.length === 0
+                                        ? 'No tienes leads asignados. Espera a que tu supervisor te asigne algunos.'
+                                        : 'Sin resultados para la búsqueda'}
+                                </div>
+                            ) : currentLead ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    {/* Navegación */}
+                                    <div style={{ ...cardStyle, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.6rem 1rem' }}>
+                                        <button onClick={handleAnterior} disabled={indiceLlamada === 0}
+                                            style={{ ...btnGray, opacity: indiceLlamada === 0 ? 0.4 : 1, padding: '0.5rem 1rem' }}>
+                                            ← Anterior
+                                        </button>
+                                        <div style={{ color: '#9ca3af', fontSize: '0.9rem', fontWeight: 600 }}>
+                                            <span style={{ color: '#10b981', fontWeight: 800 }}>{indiceLlamada + 1}</span>
+                                            <span style={{ margin: '0 0.4rem', color: '#4b5563' }}>de</span>
+                                            <span>{miBaseFiltered.length}</span>
+                                        </div>
+                                        <button onClick={handleSiguiente} disabled={indiceLlamada >= miBaseFiltered.length - 1}
+                                            style={{ ...btnGray, opacity: indiceLlamada >= miBaseFiltered.length - 1 ? 0.4 : 1, padding: '0.5rem 1rem' }}>
+                                            Siguiente →
+                                        </button>
+                                    </div>
+
+                                    {/* Tarjeta del lead */}
+                                    <div style={{
+                                        background: 'linear-gradient(145deg, rgba(16,185,129,0.07), rgba(255,255,255,0.02))',
+                                        border: '1px solid rgba(16,185,129,0.25)',
+                                        borderRadius: '16px', padding: '1.75rem',
+                                    }}>
+                                        {/* Nombre y DNI */}
+                                        <div style={{ marginBottom: '1.5rem' }}>
+                                            <p style={{ color: '#6b7280', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', margin: 0 }}>
+                                                Lead #{currentLead.id} · DNI {currentLead.dni}
+                                            </p>
+                                            <h2 style={{ color: 'white', fontSize: '1.75rem', fontWeight: 800, margin: '0.35rem 0 0' }}>
+                                                {currentLead.nombre}
+                                            </h2>
+                                        </div>
+
+                                        {/* Información destacada (teléfono CTA) */}
+                                        <a
+                                            href={`tel:${currentLead.telefono}`}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', gap: '0.75rem',
+                                                background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.4)',
+                                                borderRadius: '12px', padding: '1rem 1.25rem', marginBottom: '1.25rem',
+                                                textDecoration: 'none', cursor: 'pointer',
+                                            }}
+                                        >
+                                            <span style={{ fontSize: '1.75rem' }}>📞</span>
+                                            <div>
+                                                <p style={{ color: '#6ee7b7', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>Teléfono — Haz click para llamar</p>
+                                                <p style={{ color: 'white', fontSize: '1.5rem', fontWeight: 800, fontFamily: 'monospace', margin: '0.15rem 0 0' }}>
+                                                    {currentLead.telefono || 'Sin teléfono'}
+                                                </p>
+                                            </div>
+                                        </a>
+
+                                        {/* Grid de datos */}
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.85rem', marginBottom: '1.5rem' }}>
+                                            <DataField label="Correo" value={currentLead.correo} />
+                                            <DataField label="Ubicación" value={[currentLead.departamento, currentLead.provincia, currentLead.distrito].filter(Boolean).join(' / ')} />
+                                            <DataField label="Líneas actuales" value={currentLead.lineasActuales} />
+                                            <DataField label="Operador actual" value={currentLead.operadorActual} highlight />
+                                            <DataField label="Fecha asignación" value={currentLead.fechaAsignacion} />
+                                            <DataField label="Estado" value={currentLead.estado} />
+                                        </div>
+
+                                        {/* Botones de acción */}
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                                             <button
-                                                onClick={() => { setVentaLead(lead); setVentaModalOpen(true); }}
-                                                style={{ ...btnGreen, padding: '0.4rem 0.9rem', fontSize: '0.8rem' }}
+                                                onClick={handleNoInteresado}
+                                                disabled={marcandoNoInteresado}
+                                                style={{
+                                                    padding: '1rem', background: 'rgba(239,68,68,0.15)',
+                                                    border: '1px solid rgba(239,68,68,0.4)', borderRadius: '10px',
+                                                    color: '#fca5a5', cursor: 'pointer', fontWeight: 700, fontSize: '1rem',
+                                                    opacity: marcandoNoInteresado ? 0.6 : 1,
+                                                }}
                                             >
-                                                Registrar Venta
+                                                ✕ No Interesado
                                             </button>
-                                        </td>
+                                            <button
+                                                onClick={handleInteresado}
+                                                style={{
+                                                    padding: '1rem', background: '#10b981', border: 'none', borderRadius: '10px',
+                                                    color: 'white', cursor: 'pointer', fontWeight: 800, fontSize: '1rem',
+                                                    boxShadow: '0 4px 14px rgba(16,185,129,0.3)',
+                                                }}
+                                            >
+                                                ✓ Interesado — Registrar Venta
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : null}
+                        </>
+                    )}
+
+                    {/* ===== Vista: Tabla ===== */}
+                    {miBaseView === 'tabla' && (
+                        <div style={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                                <thead>
+                                    <tr style={{ background: 'rgba(255,255,255,0.04)' }}>
+                                        {['DNI', 'Nombre', 'Teléfono', 'Correo', 'Ubicación', 'Líneas', 'Operador', 'Asignado', 'Acción'].map(h => (
+                                            <th key={h} style={{ padding: '0.75rem 1rem', textAlign: 'left', color: '#9ca3af', fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>
+                                        ))}
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody>
+                                    {miBaseFiltered.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={9} style={{ padding: '3rem', textAlign: 'center', color: '#4b5563' }}>
+                                                {miBase.length === 0
+                                                    ? 'No tienes leads asignados. Espera a que tu supervisor te asigne algunos.'
+                                                    : 'Sin resultados para la búsqueda'}
+                                            </td>
+                                        </tr>
+                                    ) : miBaseFiltered.map(lead => (
+                                        <tr key={lead.id} style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                                            <td style={{ padding: '0.65rem 1rem', color: '#d1d5db', fontFamily: 'monospace' }}>{lead.dni}</td>
+                                            <td style={{ padding: '0.65rem 1rem', color: 'white', fontWeight: 600 }}>{lead.nombre}</td>
+                                            <td style={{ padding: '0.65rem 1rem', color: '#10b981', fontFamily: 'monospace' }}>{lead.telefono}</td>
+                                            <td style={{ padding: '0.65rem 1rem', color: '#9ca3af', fontSize: '0.8rem' }}>{lead.correo}</td>
+                                            <td style={{ padding: '0.65rem 1rem', color: '#9ca3af' }}>{[lead.departamento, lead.provincia, lead.distrito].filter(Boolean).join(', ')}</td>
+                                            <td style={{ padding: '0.65rem 1rem', color: '#d1d5db', textAlign: 'center' }}>{lead.lineasActuales}</td>
+                                            <td style={{ padding: '0.65rem 1rem', color: '#d1d5db' }}>{lead.operadorActual}</td>
+                                            <td style={{ padding: '0.65rem 1rem', color: '#6b7280', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{lead.fechaAsignacion}</td>
+                                            <td style={{ padding: '0.65rem 1rem' }}>
+                                                <button
+                                                    onClick={() => { setVentaLead(lead); setVentaModalOpen(true); }}
+                                                    style={{ ...btnGreen, padding: '0.4rem 0.9rem', fontSize: '0.8rem' }}
+                                                >
+                                                    Registrar Venta
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
-            )}
+                );
+            })()}
 
             {/* Modal de venta */}
             <SubirVentaModalR10
@@ -488,6 +672,31 @@ export default function BaseR10Client({ userRole, userName, libreLeads, teamMemb
                     baseLeadId: ventaLead.id,
                 } : undefined}
             />
+        </div>
+    );
+}
+
+function DataField({ label, value, highlight }: { label: string; value: string | number; highlight?: boolean }) {
+    const displayValue = value === null || value === undefined || value === '' ? '—' : String(value);
+    return (
+        <div style={{
+            background: 'rgba(0,0,0,0.25)',
+            border: '1px solid rgba(255,255,255,0.05)',
+            borderRadius: '8px',
+            padding: '0.65rem 0.85rem',
+        }}>
+            <p style={{ color: '#6b7280', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', margin: 0 }}>
+                {label}
+            </p>
+            <p style={{
+                color: highlight ? '#fbbf24' : 'white',
+                fontSize: '0.95rem',
+                fontWeight: highlight ? 700 : 500,
+                margin: '0.2rem 0 0',
+                wordBreak: 'break-word',
+            }}>
+                {displayValue}
+            </p>
         </div>
     );
 }
