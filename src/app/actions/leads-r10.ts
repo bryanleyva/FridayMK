@@ -70,6 +70,61 @@ async function ensureHeaders(sheet: any, requiredHeaders: string[]): Promise<voi
     await sheet.setHeaderRow(newHeaders);
 }
 
+/**
+ * Headers esperados por cada hoja R10. Centralizados para que ensureSheet/ensureHeaders
+ * puedan crear o reparar la estructura sin que nadie tenga que tocar el Google Sheets.
+ */
+const SHEET_HEADERS_R10: Record<string, string[]> = {
+    INTERESADOS_R10: [
+        'ID', 'VENTA_ID', 'LINEA_NUM', 'FECHA_INGRESO',
+        'EJECUTIVO', 'SUPERVISOR', 'CAMPAÑA', 'ESTADO',
+        'CANAL_VENTA', 'RUC_DNI', 'TIPO_INGRESO', 'NOMBRES_APELLIDOS',
+        'FECHA_NACIMIENTO', 'ESTADO_CIVIL', 'DISTRITO_NACIMIENTO',
+        'NOMBRE_PAPA', 'NOMBRE_MAMA', 'CORREO',
+        'TIPO_VENTA', 'NUMERO_PORTAR', 'OPERADOR_ACTUAL', 'MODALIDAD_OPERADOR',
+        'PLAN', 'PROMOCION_BRINDADA', 'OBSERVACION',
+    ],
+    INGRESADOS_R10: [
+        'ID', 'VENTA_ID', 'LINEA_NUM', 'FECHA_INGRESO', 'FECHA_CIERRE',
+        'EJECUTIVO', 'SUPERVISOR', 'CAMPAÑA', 'ESTADO', 'CANAL_VENTA',
+        'RUC_DNI', 'TIPO_INGRESO', 'NOMBRES_APELLIDOS', 'FECHA_NACIMIENTO',
+        'ESTADO_CIVIL', 'DISTRITO_NACIMIENTO', 'NOMBRE_PAPA', 'NOMBRE_MAMA',
+        'CORREO', 'TIPO_VENTA', 'NUMERO_PORTAR', 'OPERADOR_ACTUAL',
+        'MODALIDAD_OPERADOR', 'PLAN', 'PROMOCION_BRINDADA', 'TIPO_ENTREGA',
+        'NUMERO_CONTACTO', 'DIRECCION_ENTREGA', 'REFERENCIA_ENTREGA',
+        'COORDENADAS', 'TIPO_ENVIO', 'FECHA_ENVIO', 'RANGO_ENVIO',
+        'PDV_TIENDA', 'OBSERVACION', 'FECHA_ACTIVACION',
+        'MESA_CONTROL_ASIGNADO', 'OBSERVACION_BO', 'MOTIVO_RECHAZO',
+    ],
+    PROSPECTOS_CAIDOS_R10: [
+        'ID', 'VENTA_ID', 'FECHA_CAIDA', 'EJECUTIVO', 'SUPERVISOR',
+        'CAMPAÑA', 'RUC_DNI', 'NOMBRES_APELLIDOS', 'TIPO_VENTA',
+        'PLAN', 'MOTIVO', 'OBSERVACION',
+    ],
+    BASE_R10: [
+        'ID', 'DNI', 'NOMBRES_COMPLETOS', 'TELEFONO', 'CORREO',
+        'DEPARTAMENTO', 'PROVINCIA', 'DISTRITO', 'LINEAS_ACTUALES', 'OPERADOR_ACTUAL',
+        'ESTADO', 'EJECUTIVO', 'SUPERVISOR', 'FECHA_CARGA', 'FECHA_ASIGNACION', 'CAMPAÑA',
+    ],
+};
+
+/**
+ * Asegura que la hoja exista. Si no existe la crea con sus headers.
+ * Si existe, se asegura de que tenga todas las columnas requeridas.
+ * Devuelve siempre la hoja lista para usar.
+ */
+async function ensureSheet(title: keyof typeof SHEET_HEADERS_R10): Promise<any> {
+    const headers = SHEET_HEADERS_R10[title];
+    let sheet = doc.sheetsByTitle[title];
+    if (!sheet) {
+        console.log(`[ensureSheet] Creando hoja "${title}"`);
+        sheet = await doc.addSheet({ title, headerValues: headers });
+        return sheet;
+    }
+    await ensureHeaders(sheet, headers);
+    return sheet;
+}
+
 // ============================================
 // TIPOS
 // ============================================
@@ -119,8 +174,7 @@ export interface CulminarVentaInput {
 export async function saveInteresadoR10(data: VentaR10Input, ejecutivo: string) {
     try {
         await loadDoc();
-        const sheet = doc.sheetsByTitle['INTERESADOS_R10'];
-        if (!sheet) return { success: false, error: 'Hoja INTERESADOS_R10 no encontrada' };
+        const sheet = await ensureSheet('INTERESADOS_R10');
         if (!data.lineas || data.lineas.length === 0) {
             return { success: false, error: 'Debe agregar al menos una línea' };
         }
@@ -406,33 +460,15 @@ export async function getIngresadosR10(
 export async function culminarVentaR10(ventaId: string, data: CulminarVentaInput) {
     try {
         await loadDoc();
-        const interesadosSheet = doc.sheetsByTitle['INTERESADOS_R10'];
-        const ingresadosSheet = doc.sheetsByTitle['INGRESADOS_R10'];
-        if (!interesadosSheet || !ingresadosSheet) {
-            return { success: false, error: 'Hojas no encontradas' };
-        }
+        const interesadosSheet = await ensureSheet('INTERESADOS_R10');
+        const ingresadosSheet = await ensureSheet('INGRESADOS_R10');
 
         const interesadosRows = await interesadosSheet.getRows();
-        const lineas = interesadosRows.filter(r => r.get('VENTA_ID') === ventaId && r.get('ESTADO') === 'INTERESADO');
+        const lineas = interesadosRows.filter((r: any) => r.get('VENTA_ID') === ventaId && r.get('ESTADO') === 'INTERESADO');
 
         if (lineas.length === 0) {
             return { success: false, error: 'Venta no encontrada o ya procesada' };
         }
-
-        // Asegurar que la hoja INGRESADOS_R10 tenga todas las columnas que vamos a escribir.
-        // Sin esto, google-spreadsheet ignora silenciosamente los campos cuyas columnas no existen.
-        await ensureHeaders(ingresadosSheet, [
-            'ID', 'VENTA_ID', 'LINEA_NUM', 'FECHA_INGRESO', 'FECHA_CIERRE',
-            'EJECUTIVO', 'SUPERVISOR', 'CAMPAÑA', 'ESTADO', 'CANAL_VENTA',
-            'RUC_DNI', 'TIPO_INGRESO', 'NOMBRES_APELLIDOS', 'FECHA_NACIMIENTO',
-            'ESTADO_CIVIL', 'DISTRITO_NACIMIENTO', 'NOMBRE_PAPA', 'NOMBRE_MAMA',
-            'CORREO', 'TIPO_VENTA', 'NUMERO_PORTAR', 'OPERADOR_ACTUAL',
-            'MODALIDAD_OPERADOR', 'PLAN', 'PROMOCION_BRINDADA', 'TIPO_ENTREGA',
-            'NUMERO_CONTACTO', 'DIRECCION_ENTREGA', 'REFERENCIA_ENTREGA',
-            'COORDENADAS', 'TIPO_ENVIO', 'FECHA_ENVIO', 'RANGO_ENVIO',
-            'PDV_TIENDA', 'OBSERVACION', 'FECHA_ACTIVACION',
-            'MESA_CONTROL_ASIGNADO', 'OBSERVACION_BO', 'MOTIVO_RECHAZO',
-        ]);
 
         const fechaCierre = getPeruTimestamp();
         let nextIngresadosId = await getNextId('INGRESADOS_R10');
@@ -501,14 +537,11 @@ export async function culminarVentaR10(ventaId: string, data: CulminarVentaInput
 export async function saveDroppedR10(ventaId: string, motivo: string, observacion: string) {
     try {
         await loadDoc();
-        const interesadosSheet = doc.sheetsByTitle['INTERESADOS_R10'];
-        const caidosSheet = doc.sheetsByTitle['PROSPECTOS_CAIDOS_R10'];
-        if (!interesadosSheet || !caidosSheet) {
-            return { success: false, error: 'Hojas no encontradas' };
-        }
+        const interesadosSheet = await ensureSheet('INTERESADOS_R10');
+        const caidosSheet = await ensureSheet('PROSPECTOS_CAIDOS_R10');
 
         const interesadosRows = await interesadosSheet.getRows();
-        const lineas = interesadosRows.filter(r => r.get('VENTA_ID') === ventaId && r.get('ESTADO') === 'INTERESADO');
+        const lineas = interesadosRows.filter((r: any) => r.get('VENTA_ID') === ventaId && r.get('ESTADO') === 'INTERESADO');
 
         if (lineas.length === 0) {
             return { success: false, error: 'Venta no encontrada o ya procesada' };
@@ -558,19 +591,7 @@ export async function updateEstadoIngresadoR10(
 ) {
     try {
         await loadDoc();
-        const sheet = doc.sheetsByTitle['INGRESADOS_R10'];
-        if (!sheet) return { success: false, error: 'Hoja INGRESADOS_R10 no encontrada' };
-
-        // Asegura que las columnas que vamos a escribir existan en la hoja.
-        // Si faltan (caso típico cuando se introdujo la feature después de crear la hoja),
-        // google-spreadsheet ignoraría silenciosamente los row.set() y los datos no se guardarían.
-        await ensureHeaders(sheet, [
-            'ESTADO',
-            'MESA_CONTROL_ASIGNADO',
-            'OBSERVACION_BO',
-            'MOTIVO_RECHAZO',
-            'FECHA_ACTIVACION',
-        ]);
+        const sheet = await ensureSheet('INGRESADOS_R10');
 
         const rows = await sheet.getRows();
         const lineas = rows.filter(r => r.get('VENTA_ID') === ventaId);
@@ -608,19 +629,10 @@ export async function updateEstadoIngresadoR10(
 // BASE R10: Upload Excel → BASE_R10 sheet
 // ============================================
 
-const BASE_R10_HEADERS = [
-    'ID', 'DNI', 'NOMBRES_COMPLETOS', 'TELEFONO', 'CORREO',
-    'DEPARTAMENTO', 'PROVINCIA', 'DISTRITO', 'LINEAS_ACTUALES', 'OPERADOR_ACTUAL',
-    'ESTADO', 'EJECUTIVO', 'SUPERVISOR', 'FECHA_CARGA', 'FECHA_ASIGNACION', 'CAMPAÑA',
-];
-
 export async function uploadBaseR10Excel(base64: string): Promise<{ success: boolean; count?: number; error?: string }> {
     try {
         await loadDoc();
-        const sheet = doc.sheetsByTitle['BASE_R10'];
-        if (!sheet) return { success: false, error: 'Hoja BASE_R10 no encontrada. Créala en Google Sheets primero.' };
-
-        await ensureHeaders(sheet, BASE_R10_HEADERS);
+        const sheet = await ensureSheet('BASE_R10');
 
         const ExcelJS = (await import('exceljs')).default;
         const workbook = new ExcelJS.Workbook();
@@ -733,8 +745,7 @@ export async function getBaseLibreR10(userName: string, userRole: string) {
 export async function asignarLeadsR10(ids: string[], ejecutivo: string, supervisor: string): Promise<{ success: boolean; error?: string }> {
     try {
         await loadDoc();
-        const sheet = doc.sheetsByTitle['BASE_R10'];
-        if (!sheet) return { success: false, error: 'Hoja BASE_R10 no encontrada' };
+        const sheet = await ensureSheet('BASE_R10');
 
         const rows = await sheet.getRows();
         const fechaAsignacion = getPeruTimestamp();
@@ -799,11 +810,10 @@ export async function getMiBaseR10(userName: string) {
 export async function marcarGestionadoR10(id: string): Promise<{ success: boolean; error?: string }> {
     try {
         await loadDoc();
-        const sheet = doc.sheetsByTitle['BASE_R10'];
-        if (!sheet) return { success: false, error: 'Hoja BASE_R10 no encontrada' };
+        const sheet = await ensureSheet('BASE_R10');
 
         const rows = await sheet.getRows();
-        const row = rows.find(r => r.get('ID') === id);
+        const row = rows.find((r: any) => r.get('ID') === id);
         if (!row) return { success: false, error: 'Lead no encontrado' };
 
         row.set('ESTADO', 'GESTIONADO');
