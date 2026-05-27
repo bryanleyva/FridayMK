@@ -79,6 +79,14 @@ export async function getUserByCredentials(username: string, password: string): 
 
     if (!userRow) return null;
 
+    // Bloquear login si el usuario está dado de baja.
+    // Si la columna ESTADO no existe en la hoja, get() devuelve undefined → no se bloquea (default ACTIVO).
+    const estado = (userRow.get('ESTADO') || '').toString().trim().toUpperCase();
+    if (estado === 'INACTIVO') {
+        console.log(`[getUserByCredentials] login bloqueado: usuario ${username} dado de baja`);
+        return null;
+    }
+
     // Generate and save new unique session token
     const newToken = Math.random().toString(36).substring(2) + Date.now().toString(36);
     userRow.set('SESSION_TOKEN', newToken);

@@ -1451,7 +1451,9 @@ export async function getAllUsers() {
             cargo: r.get('CARGO') || '',
             supervisor: r.get('SUPERVISOR') || '',
             telefono: r.get('TELEFONO') || '',
-            campana: r.get('CAMPAÑA') || ''
+            campana: r.get('CAMPAÑA') || '',
+            // Si la columna ESTADO no existe en la hoja, se asume ACTIVO por defecto.
+            estado: ((r.get('ESTADO') || '').toString().trim().toUpperCase() === 'INACTIVO') ? 'INACTIVO' : 'ACTIVO',
         }));
     } catch (error) {
         console.error('Error in getAllUsers:', error);
@@ -1556,6 +1558,99 @@ export async function updateUser(dni: string, data: {
     } catch (error) {
         console.error('Error updating user:', error);
         return { success: false, error: 'Error al actualizar el usuario' };
+    }
+}
+
+/**
+ * Asegura que la hoja USUARIOS tenga la columna ESTADO (ACTIVO/INACTIVO).
+ * Se llama antes de operaciones de baja/reactivación para evitar fallos
+ * silenciosos de google-spreadsheet cuando el header no existe.
+ */
+async function ensureUsuariosHeaders(sheet: any, requiredHeaders: string[]): Promise<void> {
+    try { await sheet.loadHeaderRow(); } catch { /* sin headers todavía */ }
+    const current: string[] = sheet.headerValues || [];
+    const missing = requiredHeaders.filter(h => !current.includes(h));
+    if (missing.length === 0) return;
+    const newHeaders = [...current, ...missing];
+    const totalCols = newHeaders.length;
+    const currentColCount = (sheet as any).columnCount ?? 0;
+    if (currentColCount < totalCols) {
+        const currentRowCount = (sheet as any).rowCount ?? 1000;
+        await sheet.resize({ rowCount: currentRowCount, columnCount: totalCols });
+    }
+    await sheet.setHeaderRow(newHeaders);
+}
+
+function generateRandomPassword(): string {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    let pass = '';
+    for (let i = 0; i < 12; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    return pass;
+}
+
+/**
+ * Da de baja a un usuario: marca ESTADO=INACTIVO, cambia la contraseña a una nueva aleatoria,
+ * y limpia el SESSION_TOKEN para forzar cierre de sesión activo.
+ * Devuelve la nueva contraseña para que el admin la guarde (queda guardada en el sheet también).
+ */
+export async function darDeBajaUsuario(dni: string): Promise<{ success: boolean; nuevaClave?: string; error?: string }> {
+    try {
+        await loadDoc();
+        const sheet = doc.sheetsByTitle['USUARIOS'];
+        if (!sheet) return { success: false, error: 'Hoja USUARIOS no encontrada' };
+
+        await ensureUsuariosHeaders(sheet, ['ESTADO']);
+
+        const rows = await sheet.getRows();
+        const row = rows.find(r => r.get('DNI')?.trim() === dni.trim());
+        if (!row) return { success: false, error: 'Usuario no encontrado' };
+
+        const nuevaClave = generateRandomPassword();
+        row.set('ESTADO', 'INACTIVO');
+        row.set('CLAVE', nuevaClave);
+        row.set('SESSION_TOKEN', '');
+        await row.save();
+
+        const userCache = UserCache.getInstance();
+        await userCache.refresh();
+
+        console.log(`[darDeBajaUsuario] DNI=${dni} dado de baja, clave rotada`);
+        return { success: true, nuevaClave };
+    } catch (error: any) {
+        console.error('Error en darDeBajaUsuario:', error);
+        return { success: false, error: error.message || 'Error al dar de baja' };
+    }
+}
+
+/**
+ * Reactiva un usuario dado de baja: ESTADO=ACTIVO. Opcionalmente puedes pasar
+ * una nueva contraseña; si no, se genera una aleatoria nueva (la vieja ya fue rotada en la baja).
+ */
+export async function reactivarUsuario(dni: string, nuevaClaveCustom?: string): Promise<{ success: boolean; nuevaClave?: string; error?: string }> {
+    try {
+        await loadDoc();
+        const sheet = doc.sheetsByTitle['USUARIOS'];
+        if (!sheet) return { success: false, error: 'Hoja USUARIOS no encontrada' };
+
+        await ensureUsuariosHeaders(sheet, ['ESTADO']);
+
+        const rows = await sheet.getRows();
+        const row = rows.find(r => r.get('DNI')?.trim() === dni.trim());
+        if (!row) return { success: false, error: 'Usuario no encontrado' };
+
+        const nuevaClave = (nuevaClaveCustom && nuevaClaveCustom.trim()) || generateRandomPassword();
+        row.set('ESTADO', 'ACTIVO');
+        row.set('CLAVE', nuevaClave);
+        await row.save();
+
+        const userCache = UserCache.getInstance();
+        await userCache.refresh();
+
+        console.log(`[reactivarUsuario] DNI=${dni} reactivado`);
+        return { success: true, nuevaClave };
+    } catch (error: any) {
+        console.error('Error en reactivarUsuario:', error);
+        return { success: false, error: error.message || 'Error al reactivar' };
     }
 }
 

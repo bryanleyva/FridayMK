@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { createUser, updateUser } from '@/app/actions/leads';
+import { createUser, updateUser, darDeBajaUsuario, reactivarUsuario } from '@/app/actions/leads';
 import { AppSwal } from '@/lib/sweetalert';
 
 interface UserEntry {
@@ -13,6 +13,7 @@ interface UserEntry {
     supervisor: string;
     telefono: string;
     campana: string;
+    estado?: string;
 }
 
 interface Supervisor {
@@ -164,6 +165,91 @@ export default function AccesosManager({ users: initialUsers, supervisors }: Pro
         }
     };
 
+    const handleDarDeBaja = async (u: UserEntry) => {
+        const confirm = await AppSwal.fire({
+            title: '¿Dar de baja a este usuario?',
+            html: `<div style="text-align:left;font-size:13px;line-height:1.6">
+                <strong style="color:#ef4444">${u.nombre}</strong><br/>
+                <span style="color:#9ca3af">Usuario: ${u.user} · DNI: ${u.dni}</span>
+                <hr style="margin:10px 0;border-color:rgba(255,255,255,0.1)"/>
+                Esto va a:
+                <ul style="margin:6px 0;padding-left:20px;color:#d1d5db">
+                    <li>Marcar al usuario como <strong>INACTIVO</strong></li>
+                    <li>Cambiar su contraseña a una <strong>nueva aleatoria</strong></li>
+                    <li>Cerrar su sesión activa</li>
+                </ul>
+                La contraseña actual ya no funcionará.
+            </div>`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, dar de baja',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#ef4444',
+        });
+        if (!confirm.isConfirmed) return;
+
+        setIsLoading(true);
+        try {
+            const res = await darDeBajaUsuario(u.dni);
+            if (res.success) {
+                await AppSwal.fire({
+                    title: 'Usuario dado de baja',
+                    html: `<div style="text-align:center">
+                        <p style="color:#9ca3af;margin-bottom:8px">Nueva contraseña generada:</p>
+                        <code style="display:inline-block;padding:8px 14px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;color:#ef4444;font-size:16px;font-family:monospace;font-weight:900;letter-spacing:1px">${res.nuevaClave}</code>
+                        <p style="color:#6b7280;margin-top:10px;font-size:11px">Guárdala — al reactivar al usuario se le asignará otra</p>
+                    </div>`,
+                    icon: 'success',
+                    confirmButtonColor: '#10b981',
+                });
+                setUsers(prev => prev.map(usr => usr.dni === u.dni ? { ...usr, estado: 'INACTIVO' } : usr));
+            } else {
+                AppSwal.fire({ title: 'Error', text: res.error || 'No se pudo dar de baja', icon: 'error', confirmButtonColor: '#ef4444' });
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleReactivar = async (u: UserEntry) => {
+        const confirm = await AppSwal.fire({
+            title: '¿Reactivar este usuario?',
+            html: `<div style="text-align:left;font-size:13px;line-height:1.6">
+                <strong style="color:#10b981">${u.nombre}</strong><br/>
+                <span style="color:#9ca3af">Usuario: ${u.user}</span>
+                <hr style="margin:10px 0;border-color:rgba(255,255,255,0.1)"/>
+                Se le generará una <strong>nueva contraseña</strong> (la actual ya no es válida).
+            </div>`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, reactivar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#10b981',
+        });
+        if (!confirm.isConfirmed) return;
+
+        setIsLoading(true);
+        try {
+            const res = await reactivarUsuario(u.dni);
+            if (res.success) {
+                await AppSwal.fire({
+                    title: 'Usuario reactivado',
+                    html: `<div style="text-align:center">
+                        <p style="color:#9ca3af;margin-bottom:8px">Nueva contraseña:</p>
+                        <code style="display:inline-block;padding:8px 14px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:8px;color:#10b981;font-size:16px;font-family:monospace;font-weight:900;letter-spacing:1px">${res.nuevaClave}</code>
+                    </div>`,
+                    icon: 'success',
+                    confirmButtonColor: '#10b981',
+                });
+                setUsers(prev => prev.map(usr => usr.dni === u.dni ? { ...usr, estado: 'ACTIVO' } : usr));
+            } else {
+                AppSwal.fire({ title: 'Error', text: res.error || 'No se pudo reactivar', icon: 'error', confirmButtonColor: '#ef4444' });
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const filteredUsers = users.filter(u => {
         if (!search) return true;
         const s = search.toLowerCase();
@@ -238,12 +324,22 @@ export default function AccesosManager({ users: initialUsers, supervisors }: Pro
                                 </tr>
                             ) : filteredUsers.map((u, idx) => {
                                 const badge = getRolBadgeColor(u.rol);
+                                const isInactivo = (u.estado || '').toUpperCase() === 'INACTIVO';
                                 return (
-                                    <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', transition: 'background 0.2s' }}
+                                    <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', transition: 'background 0.2s', opacity: isInactivo ? 0.55 : 1 }}
                                         onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')}
                                         onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                                         <td style={{ padding: '12px 16px', fontSize: '11px', fontWeight: 700, color: 'rgba(255,255,255,0.5)', fontFamily: 'monospace' }}>{u.dni}</td>
-                                        <td style={{ padding: '12px 16px', fontSize: '12px', fontWeight: 800, color: 'white', textTransform: 'uppercase' }}>{u.nombre}</td>
+                                        <td style={{ padding: '12px 16px', fontSize: '12px', fontWeight: 800, color: 'white', textTransform: 'uppercase' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <span style={{ textDecoration: isInactivo ? 'line-through' : 'none' }}>{u.nombre}</span>
+                                                {isInactivo && (
+                                                    <span style={{ padding: '2px 8px', borderRadius: '6px', fontSize: '8px', fontWeight: 900, background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                                                        INACTIVO
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </td>
                                         <td style={{ padding: '12px 16px' }}>
                                             <span onClick={() => copyToClipboard(u.user, `user-${idx}`)}
                                                 style={{ fontSize: '11px', fontWeight: 900, color: '#8b5cf6', fontFamily: 'monospace', cursor: 'pointer' }}
@@ -266,13 +362,32 @@ export default function AccesosManager({ users: initialUsers, supervisors }: Pro
                                             ) : <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px' }}>—</span>}
                                         </td>
                                         <td style={{ padding: '12px 16px' }}>
-                                            <button onClick={() => openEdit(u)} style={{
-                                                background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.25)',
-                                                borderRadius: '8px', color: '#8b5cf6', padding: '5px 12px',
-                                                fontSize: '10px', fontWeight: 900, cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.5px'
-                                            }}>
-                                                Editar
-                                            </button>
+                                            <div style={{ display: 'flex', gap: '6px' }}>
+                                                <button onClick={() => openEdit(u)} disabled={isLoading} style={{
+                                                    background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.25)',
+                                                    borderRadius: '8px', color: '#8b5cf6', padding: '5px 12px',
+                                                    fontSize: '10px', fontWeight: 900, cursor: isLoading ? 'not-allowed' : 'pointer', textTransform: 'uppercase', letterSpacing: '0.5px'
+                                                }}>
+                                                    Editar
+                                                </button>
+                                                {isInactivo ? (
+                                                    <button onClick={() => handleReactivar(u)} disabled={isLoading} style={{
+                                                        background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)',
+                                                        borderRadius: '8px', color: '#10b981', padding: '5px 12px',
+                                                        fontSize: '10px', fontWeight: 900, cursor: isLoading ? 'not-allowed' : 'pointer', textTransform: 'uppercase', letterSpacing: '0.5px'
+                                                    }}>
+                                                        Reactivar
+                                                    </button>
+                                                ) : (
+                                                    <button onClick={() => handleDarDeBaja(u)} disabled={isLoading} style={{
+                                                        background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
+                                                        borderRadius: '8px', color: '#ef4444', padding: '5px 12px',
+                                                        fontSize: '10px', fontWeight: 900, cursor: isLoading ? 'not-allowed' : 'pointer', textTransform: 'uppercase', letterSpacing: '0.5px'
+                                                    }}>
+                                                        Dar de Baja
+                                                    </button>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 );
