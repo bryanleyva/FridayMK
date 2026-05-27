@@ -603,3 +603,214 @@ export async function updateEstadoIngresadoR10(
         return { success: false, error: error.message || 'Error al actualizar estado' };
     }
 }
+
+// ============================================
+// BASE R10: Upload Excel → BASE_R10 sheet
+// ============================================
+
+const BASE_R10_HEADERS = [
+    'ID', 'DNI', 'NOMBRES_COMPLETOS', 'TELEFONO', 'CORREO',
+    'DEPARTAMENTO', 'PROVINCIA', 'DISTRITO', 'LINEAS_ACTUALES', 'OPERADOR_ACTUAL',
+    'ESTADO', 'EJECUTIVO', 'SUPERVISOR', 'FECHA_CARGA', 'FECHA_ASIGNACION', 'CAMPAÑA',
+];
+
+export async function uploadBaseR10Excel(base64: string): Promise<{ success: boolean; count?: number; error?: string }> {
+    try {
+        await loadDoc();
+        const sheet = doc.sheetsByTitle['BASE_R10'];
+        if (!sheet) return { success: false, error: 'Hoja BASE_R10 no encontrada. Créala en Google Sheets primero.' };
+
+        await ensureHeaders(sheet, BASE_R10_HEADERS);
+
+        const ExcelJS = (await import('exceljs')).default;
+        const workbook = new ExcelJS.Workbook();
+        const buffer = Buffer.from(base64, 'base64');
+        await workbook.xlsx.load(buffer as any);
+
+        const worksheet = workbook.worksheets[0];
+        if (!worksheet) return { success: false, error: 'El archivo no tiene hojas' };
+
+        // Build header → column index map (from row 1)
+        const colMap: Record<string, number> = {};
+        worksheet.getRow(1).eachCell((cell, colNum) => {
+            const key = String(cell.value || '').trim().toUpperCase().replace(/\s+/g, '_').replace(/[ÁÀÂÄ]/g, 'A').replace(/[ÉÈÊË]/g, 'E').replace(/[ÍÌÎÏ]/g, 'I').replace(/[ÓÒÔÖ]/g, 'O').replace(/[ÚÙÛÜ]/g, 'U');
+            colMap[key] = colNum;
+        });
+
+        const getCol = (row: any, aliases: string[]): string => {
+            for (const alias of aliases) {
+                const ci = colMap[alias];
+                if (ci) {
+                    const v = row.getCell(ci).value;
+                    if (v !== null && v !== undefined) return String(v).trim();
+                }
+            }
+            return '';
+        };
+
+        const existingRows = await sheet.getRows();
+        const existingIds = existingRows.map(r => parseInt(r.get('ID') || '0')).filter(n => !isNaN(n) && n > 0);
+        let nextId = existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1;
+
+        const fechaCarga = getPeruTimestamp();
+        let count = 0;
+
+        const toAdd: any[] = [];
+        worksheet.eachRow((row, rowNum) => {
+            if (rowNum === 1) return;
+            const dni = getCol(row, ['DNI']);
+            const nombre = getCol(row, ['NOMBRES_COMPLETOS', 'NOMBRES COMPLETOS', 'NOMBRE_COMPLETO', 'NOMBRE', 'NOMBRES']);
+            if (!dni && !nombre) return;
+            toAdd.push({
+                'ID': String(nextId++),
+                'DNI': dni,
+                'NOMBRES_COMPLETOS': nombre,
+                'TELEFONO': getCol(row, ['TELEFONO', 'TELÉFONO', 'CELULAR', 'MOVIL']),
+                'CORREO': getCol(row, ['CORREO', 'EMAIL', 'CORREO_ELECTRONICO', 'CORREO ELECTRONICO']),
+                'DEPARTAMENTO': getCol(row, ['DEPARTAMENTO']),
+                'PROVINCIA': getCol(row, ['PROVINCIA']),
+                'DISTRITO': getCol(row, ['DISTRITO']),
+                'LINEAS_ACTUALES': getCol(row, ['LINEAS_ACTUALES', 'LINEAS ACTUALES', 'LINEAS', 'CANTIDAD_LINEAS']),
+                'OPERADOR_ACTUAL': getCol(row, ['OPERADOR_ACTUAL', 'OPERADOR ACTUAL', 'OPERADOR']),
+                'ESTADO': 'LIBRE',
+                'EJECUTIVO': '',
+                'SUPERVISOR': '',
+                'FECHA_CARGA': fechaCarga,
+                'FECHA_ASIGNACION': '',
+                'CAMPAÑA': 'R10',
+            });
+            count++;
+        });
+
+        for (const row of toAdd) {
+            await sheet.addRow(row as any);
+        }
+
+        return { success: true, count };
+    } catch (error: any) {
+        console.error('Error en uploadBaseR10Excel:', error);
+        return { success: false, error: error.message || 'Error al procesar el archivo' };
+    }
+}
+
+// ============================================
+// BASE R10: Leer leads libres (para asignar)
+// ============================================
+
+export async function getBaseLibreR10(userName: string, userRole: string) {
+    try {
+        await loadDoc();
+        const sheet = doc.sheetsByTitle['BASE_R10'];
+        if (!sheet) return [];
+
+        const rows = await sheet.getRows();
+        return rows
+            .filter(r => (r.get('ESTADO') || '').trim() === 'LIBRE')
+            .map(r => ({
+                id: r.get('ID') || '',
+                dni: r.get('DNI') || '',
+                nombre: r.get('NOMBRES_COMPLETOS') || '',
+                telefono: r.get('TELEFONO') || '',
+                correo: r.get('CORREO') || '',
+                departamento: r.get('DEPARTAMENTO') || '',
+                provincia: r.get('PROVINCIA') || '',
+                distrito: r.get('DISTRITO') || '',
+                lineasActuales: r.get('LINEAS_ACTUALES') || '',
+                operadorActual: r.get('OPERADOR_ACTUAL') || '',
+                estado: 'LIBRE',
+                fechaCarga: r.get('FECHA_CARGA') || '',
+            }));
+    } catch (error) {
+        console.error('Error en getBaseLibreR10:', error);
+        return [];
+    }
+}
+
+// ============================================
+// BASE R10: Asignar leads a ejecutivo
+// ============================================
+
+export async function asignarLeadsR10(ids: string[], ejecutivo: string, supervisor: string): Promise<{ success: boolean; error?: string }> {
+    try {
+        await loadDoc();
+        const sheet = doc.sheetsByTitle['BASE_R10'];
+        if (!sheet) return { success: false, error: 'Hoja BASE_R10 no encontrada' };
+
+        const rows = await sheet.getRows();
+        const fechaAsignacion = getPeruTimestamp();
+
+        for (const id of ids) {
+            const row = rows.find(r => r.get('ID') === id && r.get('ESTADO') === 'LIBRE');
+            if (row) {
+                row.set('ESTADO', 'ASIGNADO');
+                row.set('EJECUTIVO', ejecutivo);
+                row.set('SUPERVISOR', supervisor);
+                row.set('FECHA_ASIGNACION', fechaAsignacion);
+                await row.save();
+            }
+        }
+
+        return { success: true };
+    } catch (error: any) {
+        console.error('Error en asignarLeadsR10:', error);
+        return { success: false, error: error.message || 'Error al asignar' };
+    }
+}
+
+// ============================================
+// BASE R10: Leads del ejecutivo (mi base)
+// ============================================
+
+export async function getMiBaseR10(userName: string) {
+    try {
+        await loadDoc();
+        const sheet = doc.sheetsByTitle['BASE_R10'];
+        if (!sheet) return [];
+
+        const rows = await sheet.getRows();
+        const normUser = (userName || '').toLowerCase().trim();
+
+        return rows
+            .filter(r => (r.get('EJECUTIVO') || '').toLowerCase().trim() === normUser && r.get('ESTADO') === 'ASIGNADO')
+            .map(r => ({
+                id: r.get('ID') || '',
+                dni: r.get('DNI') || '',
+                nombre: r.get('NOMBRES_COMPLETOS') || '',
+                telefono: r.get('TELEFONO') || '',
+                correo: r.get('CORREO') || '',
+                departamento: r.get('DEPARTAMENTO') || '',
+                provincia: r.get('PROVINCIA') || '',
+                distrito: r.get('DISTRITO') || '',
+                lineasActuales: r.get('LINEAS_ACTUALES') || '',
+                operadorActual: r.get('OPERADOR_ACTUAL') || '',
+                estado: r.get('ESTADO') || '',
+                fechaAsignacion: r.get('FECHA_ASIGNACION') || '',
+            }));
+    } catch (error) {
+        console.error('Error en getMiBaseR10:', error);
+        return [];
+    }
+}
+
+// ============================================
+// BASE R10: Marcar como gestionado
+// ============================================
+
+export async function marcarGestionadoR10(id: string): Promise<{ success: boolean; error?: string }> {
+    try {
+        await loadDoc();
+        const sheet = doc.sheetsByTitle['BASE_R10'];
+        if (!sheet) return { success: false, error: 'Hoja BASE_R10 no encontrada' };
+
+        const rows = await sheet.getRows();
+        const row = rows.find(r => r.get('ID') === id);
+        if (!row) return { success: false, error: 'Lead no encontrado' };
+
+        row.set('ESTADO', 'GESTIONADO');
+        await row.save();
+        return { success: true };
+    } catch (error: any) {
+        console.error('Error en marcarGestionadoR10:', error);
+        return { success: false, error: error.message || 'Error' };
+    }
+}

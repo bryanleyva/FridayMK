@@ -1,14 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { saveInteresadoR10, LineaVentaR10, VentaR10Input } from '@/app/actions/leads-r10';
 import { AppSwal } from '@/lib/sweetalert';
+
+interface PrefillData {
+    rucDni?: string;
+    nombre?: string;
+    correo?: string;
+    baseLeadId?: string;
+}
 
 interface Props {
     isOpen: boolean;
     onClose: () => void;
-    onSaved: () => void;
+    onSaved: (baseLeadId?: string) => void;
     ejecutivo: string;
+    prefillData?: PrefillData;
 }
 
 const CANALES = ['Call Center', 'Marketing Digital', 'Publicidad', 'Referido', 'Otros'];
@@ -29,7 +37,7 @@ const emptyLinea = (): LineaVentaR10 => ({
     promocionBrindada: '',
 });
 
-export default function SubirVentaModalR10({ isOpen, onClose, onSaved, ejecutivo }: Props) {
+export default function SubirVentaModalR10({ isOpen, onClose, onSaved, ejecutivo, prefillData }: Props) {
     const [step, setStep] = useState(1);
     const [saving, setSaving] = useState(false);
 
@@ -50,6 +58,15 @@ export default function SubirVentaModalR10({ isOpen, onClose, onSaved, ejecutivo
 
     // Líneas
     const [lineas, setLineas] = useState<LineaVentaR10[]>([emptyLinea()]);
+
+    // Aplicar prefillData cuando el modal se abre
+    useEffect(() => {
+        if (isOpen && prefillData) {
+            if (prefillData.rucDni) setRucDni(prefillData.rucDni);
+            if (prefillData.nombre) setNombresApellidos(prefillData.nombre);
+            if (prefillData.correo) setCorreo(prefillData.correo);
+        }
+    }, [isOpen]);
 
     const resetForm = () => {
         setStep(1);
@@ -137,7 +154,7 @@ export default function SubirVentaModalR10({ isOpen, onClose, onSaved, ejecutivo
             if (res.success) {
                 await AppSwal.fire({ icon: 'success', title: 'Venta registrada', text: `ID: ${res.ventaId}`, timer: 2000, showConfirmButton: false });
                 resetForm();
-                onSaved();
+                onSaved(prefillData?.baseLeadId);
                 onClose();
             } else {
                 AppSwal.fire({ icon: 'error', title: 'Error', text: res.error });
