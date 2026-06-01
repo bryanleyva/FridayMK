@@ -160,7 +160,8 @@ export default function ReporteR10Client({ user, userRole, ingresados, interesad
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.75rem' }}>
                 <KpiCard label="Interesados" value={kpis.interesados} color="#fbbf24" />
                 <KpiCard label="Ventas cerradas" value={kpis.cerradas} color="#6366f1" />
-                <KpiCard label="Activas" value={kpis.activas} sub={`${kpis.totalLineas} líneas`} color="#10b981" highlight />
+                <KpiCard label="Cuentas activas" value={kpis.activas} color="#10b981" highlight />
+                <KpiCard label="Líneas activas" value={kpis.totalLineas} color="#34d399" highlight />
                 <KpiCard label="Pendientes" value={kpis.pendientes} color="#f59e0b" />
                 <KpiCard label="Rechazadas" value={kpis.rechazadas} color="#ef4444" />
             </div>
