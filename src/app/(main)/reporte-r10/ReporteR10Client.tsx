@@ -7,9 +7,11 @@ interface Props {
     userRole: string;
     ingresados: any[];
     interesados: any[];
+    inactiveUsers?: string[];
 }
 
-export default function ReporteR10Client({ user, userRole, ingresados, interesados }: Props) {
+export default function ReporteR10Client({ user, userRole, ingresados, interesados, inactiveUsers = [] }: Props) {
+    const inactiveSet = new Set(inactiveUsers.map(n => n.trim().toUpperCase()));
     // Peru time current month
     const now = new Date();
     const peruDate = new Intl.DateTimeFormat('es-PE', { timeZone: 'America/Lima', year: 'numeric', month: 'numeric' }).formatToParts(now);
@@ -61,16 +63,18 @@ export default function ReporteR10Client({ user, userRole, ingresados, interesad
         };
     }, [ingPeriod, intPeriod]);
 
-    // Ranking ejecutivos (por ACTIVAS)
+    // Ranking ejecutivos (por ACTIVAS) — excluye dados de baja
     const ranking = useMemo(() => {
         const map: Record<string, { activas: number; pendientes: number; rechazadas: number; lineas: number; interesados: number }> = {};
         intPeriod.forEach(v => {
             if (!v.ejecutivo) return;
+            if (inactiveSet.has((v.ejecutivo || '').trim().toUpperCase())) return;
             if (!map[v.ejecutivo]) map[v.ejecutivo] = { activas: 0, pendientes: 0, rechazadas: 0, lineas: 0, interesados: 0 };
             map[v.ejecutivo].interesados++;
         });
         ingPeriod.forEach(v => {
             if (!v.ejecutivo) return;
+            if (inactiveSet.has((v.ejecutivo || '').trim().toUpperCase())) return;
             if (!map[v.ejecutivo]) map[v.ejecutivo] = { activas: 0, pendientes: 0, rechazadas: 0, lineas: 0, interesados: 0 };
             const e = (v.estado || '').toUpperCase();
             if (e === 'ACTIVO') { map[v.ejecutivo].activas++; map[v.ejecutivo].lineas += (v.cantidadLineas || 0); }
@@ -80,7 +84,7 @@ export default function ReporteR10Client({ user, userRole, ingresados, interesad
         return Object.entries(map)
             .map(([nombre, s]) => ({ nombre, ...s }))
             .sort((a, b) => b.activas - a.activas);
-    }, [ingPeriod, intPeriod]);
+    }, [ingPeriod, intPeriod, inactiveSet]);
 
     // Distribución por Plan (solo activas)
     const distribPlan = useMemo(() => {

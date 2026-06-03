@@ -190,7 +190,20 @@ export default async function ReportePage(props: { searchParams: Promise<{ mes?:
     const userCache = UserCache.getInstance();
     await userCache.ensureInitialized();
     const allUsers = userCache.getAll();
-    const standardUsers = allUsers.filter((u: any) => u.get('ROL')?.trim().toUpperCase() === 'STANDAR');
+
+    // Conjunto de nombres de usuarios dados de baja (ESTADO=INACTIVO)
+    const inactiveNames = new Set(
+        allUsers
+            .filter((u: any) => (u.get('ESTADO') || '').trim().toUpperCase() === 'INACTIVO')
+            .map((u: any) => (u.get('NOMBRES COMPLETOS') || '').trim().toUpperCase())
+            .filter(Boolean)
+    );
+
+    // Solo ejecutivos activos en el ranking
+    const standardUsers = allUsers.filter((u: any) =>
+        u.get('ROL')?.trim().toUpperCase() === 'STANDAR' &&
+        (u.get('ESTADO') || '').trim().toUpperCase() !== 'INACTIVO'
+    );
 
     const execMap: {
         [key: string]: {
@@ -242,8 +255,8 @@ export default async function ReportePage(props: { searchParams: Promise<{ mes?:
         const lineas = safeParse(v.lineas);
         const cf = safeParse(v.cargoFijo) / 1.18;
 
-        // EXECUTIVE MAPPING
-        if (name) {
+        // EXECUTIVE MAPPING — excluir dados de baja
+        if (name && !inactiveNames.has(name)) {
             if (!execMap[name]) {
                 // If the sale record has a supervisor, use it. 
                 // A supervisor selling personally usually has their own name as supervisor in the sheet.
@@ -297,7 +310,8 @@ export default async function ReportePage(props: { searchParams: Promise<{ mes?:
             }
         }
 
-        // SUPERVISOR MAPPING
+        // SUPERVISOR MAPPING — excluir dados de baja
+        if (inactiveNames.has(supName)) return;
         if (!supMap[supName]) {
             supMap[supName] = {
                 lineasActivas: 0,

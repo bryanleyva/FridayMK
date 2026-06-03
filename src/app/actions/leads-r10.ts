@@ -560,8 +560,8 @@ export async function saveDroppedR10(ventaId: string, motivo: string, observacio
             'CAMPAÑA': 'R10',
             'RUC_DNI': first.get('RUC_DNI'),
             'NOMBRES_APELLIDOS': first.get('NOMBRES_APELLIDOS'),
-            'TIPO_VENTA': lineas.map(l => l.get('TIPO_VENTA')).join(' / '),
-            'PLAN': lineas.map(l => l.get('PLAN')).join(' / '),
+            'TIPO_VENTA': lineas.map((l: any) => l.get('TIPO_VENTA')).join(' / '),
+            'PLAN': lineas.map((l: any) => l.get('PLAN')).join(' / '),
             'MOTIVO': motivo,
             'OBSERVACION': observacion,
         } as any);
@@ -594,7 +594,7 @@ export async function updateEstadoIngresadoR10(
         const sheet = await ensureSheet('INGRESADOS_R10');
 
         const rows = await sheet.getRows();
-        const lineas = rows.filter(r => r.get('VENTA_ID') === ventaId);
+        const lineas = rows.filter((r: any) => r.get('VENTA_ID') === ventaId);
 
         if (lineas.length === 0) {
             return { success: false, error: 'Venta no encontrada' };
@@ -678,7 +678,7 @@ export async function uploadBaseR10Excel(base64: string): Promise<{ success: boo
         };
 
         const existingRows = await sheet.getRows();
-        const existingIds = existingRows.map(r => parseInt(r.get('ID') || '0')).filter(n => !isNaN(n) && n > 0);
+        const existingIds = existingRows.map((r: any) => parseInt(r.get('ID') || '0')).filter((n: number) => !isNaN(n) && n > 0);
         let nextId = existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1;
 
         const fechaCarga = getPeruTimestamp();
@@ -783,7 +783,7 @@ export async function asignarLeadsR10(ids: string[], ejecutivo: string, supervis
         const fechaAsignacion = getPeruTimestamp();
 
         for (const id of ids) {
-            const row = rows.find(r => r.get('ID') === id && r.get('ESTADO') === 'LIBRE');
+            const row = rows.find((r: any) => r.get('ID') === id && r.get('ESTADO') === 'LIBRE');
             if (row) {
                 row.set('ESTADO', 'ASIGNADO');
                 row.set('EJECUTIVO', ejecutivoNombreCompleto);

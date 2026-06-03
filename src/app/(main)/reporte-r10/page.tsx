@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { hasCampaignAccess } from "@/lib/campaign";
 import { getIngresadosR10, getInteresadosR10 } from "@/app/actions/leads-r10";
+import { UserCache } from "@/lib/user-cache";
 import ReporteR10Client from "./ReporteR10Client";
 
 export default async function ReporteR10Page() {
@@ -23,6 +24,15 @@ export default async function ReporteR10Page() {
     if (role === 'ADMIN' || role === 'BACKOFFICE') scope = 'all';
     else if (role === 'SPECIAL') scope = 'team';
 
+    const userCache = UserCache.getInstance();
+    await userCache.ensureInitialized();
+    const inactiveUsers = new Set(
+        userCache.getAll()
+            .filter((u: any) => (u.get('ESTADO') || '').trim().toUpperCase() === 'INACTIVO')
+            .map((u: any) => (u.get('NOMBRES COMPLETOS') || '').trim().toUpperCase())
+            .filter(Boolean)
+    );
+
     const [ingresados, interesados] = await Promise.all([
         getIngresadosR10(userName, role, { scope }),
         getInteresadosR10(userName, role),
@@ -34,6 +44,7 @@ export default async function ReporteR10Page() {
             userRole={role}
             ingresados={ingresados}
             interesados={interesados}
+            inactiveUsers={Array.from(inactiveUsers)}
         />
     );
 }
