@@ -1913,3 +1913,98 @@ export async function deleteVenta(id: string) {
         return { success: false, error: 'Error al eliminar la venta' };
     }
 }
+
+// ============================================
+// UPLOAD EXCEL → BASE CLARO (R20)
+// ============================================
+
+export async function uploadBaseClaroExcel(
+    base64: string
+): Promise<{ success: boolean; added?: number; skipped?: number; error?: string }> {
+    try {
+        const ExcelJS = (await import('exceljs')).default;
+        const workbook = new ExcelJS.Workbook();
+        const buffer = Buffer.from(base64, 'base64');
+        await workbook.xlsx.load(buffer as any);
+
+        const worksheet = workbook.worksheets[0];
+        if (!worksheet) return { success: false, error: 'El archivo Excel está vacío' };
+
+        // Leer cabeceras de la primera fila y construir mapa col→índice
+        const headerRow = worksheet.getRow(1);
+        const colMap: Record<string, number> = {};
+        headerRow.eachCell((cell, colNum) => {
+            const val = (cell.value?.toString() || '').trim().toUpperCase()
+                .normalize('NFD').replace(/[̀-ͯ]/g, '');
+            colMap[val] = colNum;
+        });
+
+        const getCol = (row: any, aliases: string[]): string => {
+            for (const alias of aliases) {
+                const ci = colMap[alias.toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '')];
+                if (ci) {
+                    const v = row.getCell(ci).value;
+                    if (v !== null && v !== undefined) return String(v).trim();
+                }
+            }
+            return '';
+        };
+
+        await loadDoc();
+        const sheet = doc.sheetsByTitle['BASE CLARO'];
+        if (!sheet) return { success: false, error: 'Hoja BASE CLARO no encontrada' };
+
+        // Leer RUCs existentes para evitar duplicados
+        const existingRows = await sheet.getRows();
+        const existingRucs = new Set(
+            existingRows.map((r: any) => (r.get('RUC') || '').toString().trim()).filter(Boolean)
+        );
+
+        let added = 0;
+        let skipped = 0;
+        const toAdd: Record<string, string>[] = [];
+
+        worksheet.eachRow((row, rowNum) => {
+            if (rowNum === 1) return;
+            const ruc = getCol(row, ['RUC']);
+            if (!ruc) return;
+
+            if (existingRucs.has(ruc)) {
+                skipped++;
+                return;
+            }
+
+            toAdd.push({
+                'RUC': ruc,
+                'Razón Social': getCol(row, ['RAZON SOCIAL', 'RAZÓN SOCIAL', 'RAZON_SOCIAL']),
+                'Representante Legal': getCol(row, ['REPRESENTANTE LEGAL', 'REPRESENTANTE_LEGAL', 'REPRESENTANTE']),
+                'Teléfonos': getCol(row, ['TELEFONOS', 'TELÉFONOS', 'TELEFONO', 'TELÉFONO', 'CELULAR']),
+                'Documento Identidad': getCol(row, ['DOCUMENTO IDENTIDAD', 'DOCUMENTO_IDENTIDAD', 'DNI', 'DOCUMENTO']),
+                'DEPARTAMENTO': getCol(row, ['DEPARTAMENTO']),
+                'PROVINCIA': getCol(row, ['PROVINCIA']),
+                'DISTRITO': getCol(row, ['DISTRITO']),
+                'DIRECCION': getCol(row, ['DIRECCION', 'DIRECCIÓN', 'DIRECCION']),
+                'CORREO': getCol(row, ['CORREO', 'EMAIL', 'CORREO ELECTRONICO', 'CORREO ELECTRÓNICO']),
+                'CANTIDAD LINEAS': getCol(row, ['CANTIDAD LINEAS', 'CANTIDAD DE LINEAS', 'LINEAS', 'LÍNEAS']),
+                'EJECUTIVO': '',
+                'ESTADO': '',
+            });
+            existingRucs.add(ruc);
+            added++;
+        });
+
+        for (const rowData of toAdd) {
+            await sheet.addRow(rowData as any);
+        }
+
+        // Refrescar LeadCache
+        const { LeadCache } = await import('@/lib/lead-cache');
+        const cache = LeadCache.getInstance();
+        await cache.refresh();
+
+        return { success: true, added, skipped };
+    } catch (error: any) {
+        console.error('Error en uploadBaseClaroExcel:', error);
+        return { success: false, error: error.message || 'Error al procesar el archivo' };
+    }
+}

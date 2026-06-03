@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { uploadBaseClaroExcel } from '@/app/actions/leads';
+import { AppSwal } from '@/lib/sweetalert';
 
 interface Props {
     user: string;
@@ -36,6 +38,41 @@ interface JobStatus {
 const SCRAPER_API = process.env.NEXT_PUBLIC_SCRAPER_API || 'http://localhost:8000';
 
 export default function ScraperR20Client({ user }: Props) {
+    const [activeTab, setActiveTab] = useState<'scraper' | 'excel'>('scraper');
+
+    // --- Excel upload state ---
+    const [excelFile, setExcelFile] = useState<File | null>(null);
+    const [excelUploading, setExcelUploading] = useState(false);
+
+    const handleExcelUpload = async () => {
+        if (!excelFile) return;
+        setExcelUploading(true);
+        try {
+            const buffer = await excelFile.arrayBuffer();
+            const base64 = Buffer.from(buffer).toString('base64');
+            const res = await uploadBaseClaroExcel(base64);
+            if (res.success) {
+                await AppSwal.fire({
+                    icon: 'success',
+                    title: 'Base cargada',
+                    html: `<div style="text-align:left;line-height:1.8">
+                        <b>${res.added}</b> registros nuevos agregados<br/>
+                        <b>${res.skipped}</b> duplicados omitidos
+                    </div>`,
+                    confirmButtonColor: '#305BD1',
+                });
+                setExcelFile(null);
+            } else {
+                AppSwal.fire({ icon: 'error', title: 'Error al subir', text: res.error || 'Error desconocido' });
+            }
+        } catch (err: any) {
+            AppSwal.fire({ icon: 'error', title: 'Error', text: err.message });
+        } finally {
+            setExcelUploading(false);
+        }
+    };
+
+    // --- Scraper state ---
     const [file, setFile] = useState<File | null>(null);
     const [status, setStatus] = useState<JobStatus | null>(null);
     const [uploading, setUploading] = useState(false);
@@ -227,6 +264,103 @@ export default function ScraperR20Client({ user }: Props) {
                     50% { opacity: 0.4; }
                 }
             `}</style>
+
+            {/* Tabs */}
+            <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: 0 }}>
+                {([
+                    { id: 'scraper', label: '🤖 Scraper automático' },
+                    { id: 'excel', label: '📂 Cargar Excel' },
+                ] as const).map(tab => (
+                    <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
+                        padding: '0.6rem 1.25rem', background: activeTab === tab.id ? 'rgba(48,91,209,0.12)' : 'transparent',
+                        border: 'none', borderBottom: activeTab === tab.id ? '2px solid #305BD1' : '2px solid transparent',
+                        color: activeTab === tab.id ? '#305BD1' : '#9CA3AF',
+                        cursor: 'pointer', fontWeight: 700, fontSize: '0.9rem',
+                        borderRadius: '8px 8px 0 0', transition: 'all 0.2s',
+                    }}>{tab.label}</button>
+                ))}
+            </div>
+
+            {/* ===== TAB: CARGAR EXCEL ===== */}
+            {activeTab === 'excel' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxWidth: '640px' }}>
+                    <div style={{ ...panelStyle }}>
+                        <h3 style={{ color: '#F9FAFB', fontSize: '1rem', fontWeight: 700, margin: '0 0 0.5rem' }}>
+                            Cargar Excel a BASE CLARO
+                        </h3>
+                        <p style={{ color: '#9CA3AF', fontSize: '0.85rem', marginBottom: '1.25rem', lineHeight: 1.6 }}>
+                            El archivo debe contener las columnas en el siguiente orden (columnas I→S del sheet):
+                        </p>
+                        <div style={{ overflowX: 'auto', marginBottom: '1.25rem' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                                <thead>
+                                    <tr>
+                                        {['RUC','Razón Social','Representante Legal','Teléfonos','Documento Identidad','DEPARTAMENTO','PROVINCIA','DISTRITO','DIRECCION','CORREO','CANTIDAD LINEAS'].map((col, i) => (
+                                            <th key={col} style={{ padding: '0.35rem 0.6rem', background: 'rgba(48,91,209,0.15)', color: '#818CF8', textAlign: 'left', whiteSpace: 'nowrap', fontWeight: 700, fontSize: '0.75rem' }}>
+                                                {String.fromCharCode(73 + i)}. {col}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+
+                        <div
+                            onClick={() => document.getElementById('base-claro-input')?.click()}
+                            style={{
+                                border: '2px dashed rgba(48,91,209,0.4)', borderRadius: '10px',
+                                padding: '2rem', textAlign: 'center', cursor: 'pointer',
+                                background: excelFile ? 'rgba(48,91,209,0.06)' : 'transparent', transition: 'all 0.2s',
+                            }}
+                        >
+                            <input
+                                id="base-claro-input"
+                                type="file"
+                                accept=".xlsx,.xls"
+                                style={{ display: 'none' }}
+                                onChange={e => setExcelFile(e.target.files?.[0] || null)}
+                            />
+                            {excelFile ? (
+                                <div>
+                                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📄</div>
+                                    <p style={{ color: '#305BD1', fontWeight: 700, margin: 0 }}>{excelFile.name}</p>
+                                    <p style={{ color: '#6B7280', fontSize: '0.8rem', margin: '0.25rem 0 0' }}>
+                                        {(excelFile.size / 1024).toFixed(1)} KB — Haz clic para cambiar
+                                    </p>
+                                </div>
+                            ) : (
+                                <div>
+                                    <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>📂</div>
+                                    <p style={{ color: '#9CA3AF', margin: 0 }}>Haz clic para seleccionar un archivo Excel</p>
+                                    <p style={{ color: '#6B7280', fontSize: '0.8rem', margin: '0.25rem 0 0' }}>Formatos: .xlsx, .xls</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {excelFile && (
+                            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
+                                <button
+                                    onClick={handleExcelUpload}
+                                    disabled={excelUploading}
+                                    style={{ flex: 1, padding: '0.75rem', background: excelUploading ? '#4B5563' : '#305BD1', border: 'none', borderRadius: '8px', color: 'white', cursor: excelUploading ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: '0.95rem' }}
+                                >
+                                    {excelUploading ? 'Subiendo...' : 'Subir a BASE CLARO'}
+                                </button>
+                                <button
+                                    onClick={() => setExcelFile(null)}
+                                    disabled={excelUploading}
+                                    style={{ padding: '0.75rem 1.25rem', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', color: '#9CA3AF', cursor: 'pointer', fontWeight: 600 }}
+                                >
+                                    Cancelar
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* ===== TAB: SCRAPER ===== */}
+            {activeTab === 'scraper' && <>
 
             {/* Servicio offline */}
             {serviceOnline === false && (
@@ -595,6 +729,8 @@ export default function ScraperR20Client({ user }: Props) {
                     </div>
                 </div>
             )}
+
+            </> /* fin tab scraper */}
         </div>
     );
 }
