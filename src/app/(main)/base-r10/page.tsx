@@ -38,7 +38,9 @@ export default async function BaseR10Page() {
 
         const supervisorNorm = norm(userName);
         const standarR10 = allUsers.filter((u: any) =>
-            norm(u.rol) === 'STANDAR' && tieneR10(u.campana)
+            norm(u.rol) === 'STANDAR' &&
+            tieneR10(u.campana) &&
+            norm(u.estado) !== 'INACTIVO'
         );
 
         if (role === 'ADMIN') {

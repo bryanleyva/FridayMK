@@ -1751,18 +1751,21 @@ export async function getExecutiveAssignmentStats(userRole?: string, userName?: 
 
         const allLeads = leadCache.getAll();
 
+        const isActive = (u: any) =>
+            (u.get('ESTADO') || '').trim().toUpperCase() !== 'INACTIVO';
+
         let execs;
         if (userRole === 'SPECIAL' && userName) {
             // Filter only executives belonging to this supervisor's team
             execs = userCache.getTeamForSupervisor(userName).filter((u: any) => {
                 const role = (u.get('ROL') || '').trim().toUpperCase();
-                return role === 'STANDAR' || role === 'SPECIAL';
+                return (role === 'STANDAR' || role === 'SPECIAL') && isActive(u);
             });
         } else {
-            // ADMIN or unidentified sees everyone
+            // ADMIN or unidentified sees everyone active
             execs = userCache.getAll().filter((u: any) => {
                 const role = (u.get('ROL') || '').trim().toUpperCase();
-                return role === 'STANDAR' || role === 'SPECIAL';
+                return (role === 'STANDAR' || role === 'SPECIAL') && isActive(u);
             });
         }
 

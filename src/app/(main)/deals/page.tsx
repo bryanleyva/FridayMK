@@ -28,16 +28,23 @@ export default async function ProspectosPage() {
     if (userRole === 'ADMIN' || userRole === 'SPECIAL') {
         const userCache = UserCache.getInstance();
         await userCache.ensureInitialized();
+        const isActive = (r: any) =>
+            (r.get('ESTADO') || '').trim().toUpperCase() !== 'INACTIVO';
+
         if (userRole === 'SPECIAL') {
-            teamMembers = userCache.getTeamForSupervisor(userName).map(r => ({
-                user: r.get('USER'),
-                name: r.get('NOMBRES COMPLETOS')
-            }));
+            teamMembers = userCache.getTeamForSupervisor(userName)
+                .filter(isActive)
+                .map(r => ({
+                    user: r.get('USER'),
+                    name: r.get('NOMBRES COMPLETOS')
+                }));
         } else {
-            teamMembers = userCache.getAll().map(r => ({
-                user: r.get('USER'),
-                name: r.get('NOMBRES COMPLETOS')
-            }));
+            teamMembers = userCache.getAll()
+                .filter(isActive)
+                .map(r => ({
+                    user: r.get('USER'),
+                    name: r.get('NOMBRES COMPLETOS')
+                }));
         }
     }
 
