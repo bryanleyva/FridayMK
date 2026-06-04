@@ -149,7 +149,7 @@ export default function MesaControlR10Client({ user, userRole, initialData }: Pr
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                             <thead>
                                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                                    {['ID', 'Estado', 'Fecha cierre', 'Cliente', 'RUC/DNI', 'Canal', 'Líneas', 'Ejecutivo', 'Acciones'].map(h => (
+                                    {['ID', 'Estado', 'Fecha cierre', 'Fecha activación', 'Cliente', 'RUC/DNI', 'Canal', 'Líneas', 'Ejecutivo', 'Acciones'].map(h => (
                                         <th key={h} style={{ padding: '0.75rem 0.5rem', textAlign: 'left', color: '#9ca3af', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>{h}</th>
                                     ))}
                                 </tr>
@@ -166,6 +166,12 @@ export default function MesaControlR10Client({ user, userRole, initialData }: Pr
                                                 </span>
                                             </td>
                                             <td style={{ padding: '0.75rem 0.5rem', color: '#d1d5db', whiteSpace: 'nowrap' }}>{v.fechaCierre?.split(',')[0]}</td>
+                                            <td style={{ padding: '0.75rem 0.5rem', whiteSpace: 'nowrap' }}>
+                                                {v.fechaActivacion
+                                                    ? <span style={{ color: '#10b981', fontWeight: 600 }}>{v.fechaActivacion.split(',')[0]}</span>
+                                                    : <span style={{ color: '#4b5563' }}>—</span>
+                                                }
+                                            </td>
                                             <td style={{ padding: '0.75rem 0.5rem', color: 'white', fontWeight: 500 }}>{v.nombresApellidos}</td>
                                             <td style={{ padding: '0.75rem 0.5rem', color: '#9ca3af', fontFamily: 'monospace' }}>{v.rucDni}</td>
                                             <td style={{ padding: '0.75rem 0.5rem', color: '#d1d5db' }}>{v.canalVenta}</td>
