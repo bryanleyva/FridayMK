@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { hasCampaignAccess } from "@/lib/campaign";
 import { getInteresadosR10 } from "@/app/actions/leads-r10";
+import { UserCache } from "@/lib/user-cache";
 import DealsR10Client from "./DealsR10Client";
 
 export default async function DealsR10Page() {
@@ -11,7 +12,6 @@ export default async function DealsR10Page() {
 
     const user = session.user as any;
 
-    // Bloquear acceso si el usuario no tiene campaña R10
     if (!hasCampaignAccess(user.campania, user.role, 'R10')) {
         redirect('/');
     }
@@ -19,7 +19,15 @@ export default async function DealsR10Page() {
     const userName = user.name || user.email || '';
     const userRole = user.role || 'STANDAR';
 
-    // Cargar datos iniciales (sin filtros de fecha al inicio)
+    const userCache = UserCache.getInstance();
+    await userCache.ensureInitialized();
+    const inactiveUsers = new Set(
+        userCache.getAll()
+            .filter((u: any) => (u.get('ESTADO') || '').trim().toUpperCase() === 'INACTIVO')
+            .map((u: any) => (u.get('NOMBRES COMPLETOS') || '').trim().toUpperCase())
+            .filter(Boolean)
+    );
+
     const initialData = await getInteresadosR10(userName, userRole);
 
     return (
@@ -27,6 +35,7 @@ export default async function DealsR10Page() {
             ejecutivo={userName}
             userRole={userRole}
             initialData={initialData}
+            inactiveUsers={Array.from(inactiveUsers)}
         />
     );
 }

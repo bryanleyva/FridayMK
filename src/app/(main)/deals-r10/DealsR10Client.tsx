@@ -11,9 +11,11 @@ interface Props {
     ejecutivo: string;
     userRole: string;
     initialData: any[];
+    inactiveUsers?: string[];
 }
 
-export default function DealsR10Client({ ejecutivo, userRole, initialData }: Props) {
+export default function DealsR10Client({ ejecutivo, userRole, initialData, inactiveUsers = [] }: Props) {
+    const inactiveSet = new Set(inactiveUsers.map(n => n.trim().toUpperCase()));
     const [data, setData] = useState(initialData);
     const [modalOpen, setModalOpen] = useState(false);
     const [startDate, setStartDate] = useState('');
@@ -44,10 +46,14 @@ export default function DealsR10Client({ ejecutivo, userRole, initialData }: Pro
         });
     };
 
-    // Lista de ejecutivos únicos (solo para ADMIN/SPECIAL)
+    // Lista de ejecutivos únicos activos (solo para ADMIN/SPECIAL)
     const canFilterByEjec = userRole === 'ADMIN' || userRole === 'SPECIAL';
     const uniqueEjecutivos = canFilterByEjec
-        ? Array.from(new Set(data.filter(d => d.ejecutivo).map(d => d.ejecutivo as string))).sort()
+        ? Array.from(new Set(
+            data
+                .filter(d => d.ejecutivo && !inactiveSet.has((d.ejecutivo as string).trim().toUpperCase()))
+                .map(d => d.ejecutivo as string)
+          )).sort()
         : [];
 
     // Filtro client-side por búsqueda y ejecutivo (instantáneo)
