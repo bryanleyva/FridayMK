@@ -21,6 +21,7 @@ export default function DealsR10Client({ ejecutivo, userRole, initialData }: Pro
     const [search, setSearch] = useState('');
     const [isPending, startTransition] = useTransition();
 
+    const [filterEjecutivo, setFilterEjecutivo] = useState('');
     const [selectedVenta, setSelectedVenta] = useState<any | null>(null);
     const [culminarOpen, setCulminarOpen] = useState(false);
     const [dropOpen, setDropOpen] = useState(false);
@@ -36,17 +37,24 @@ export default function DealsR10Client({ ejecutivo, userRole, initialData }: Pro
     };
 
     const clearFilters = () => {
-        setStartDate(''); setEndDate(''); setSearch('');
+        setStartDate(''); setEndDate(''); setSearch(''); setFilterEjecutivo('');
         startTransition(async () => {
             const fresh = await getInteresadosR10(ejecutivo, userRole);
             setData(fresh);
         });
     };
 
-    // Filtro client-side por búsqueda (instantáneo)
+    // Lista de ejecutivos únicos (solo para ADMIN/SPECIAL)
+    const canFilterByEjec = userRole === 'ADMIN' || userRole === 'SPECIAL';
+    const uniqueEjecutivos = canFilterByEjec
+        ? Array.from(new Set(data.filter(d => d.ejecutivo).map(d => d.ejecutivo as string))).sort()
+        : [];
+
+    // Filtro client-side por búsqueda y ejecutivo (instantáneo)
     const filtered = data
         .filter(d => d.estado === 'INTERESADO')
         .filter(d => {
+            if (filterEjecutivo && d.ejecutivo !== filterEjecutivo) return false;
             if (!search.trim()) return true;
             const s = search.toLowerCase().trim();
             return (d.rucDni || '').toLowerCase().includes(s) ||
@@ -99,6 +107,18 @@ export default function DealsR10Client({ ejecutivo, userRole, initialData }: Pro
                     onChange={e => setSearch(e.target.value)}
                     style={{ flex: 1, minWidth: '220px', padding: '0.55rem 0.85rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white', fontSize: '0.9rem' }}
                 />
+                {canFilterByEjec && (
+                    <select
+                        value={filterEjecutivo}
+                        onChange={e => setFilterEjecutivo(e.target.value)}
+                        style={{ padding: '0.55rem 0.85rem', background: 'rgba(255,255,255,0.05)', border: `1px solid ${filterEjecutivo ? 'rgba(16,185,129,0.5)' : 'rgba(255,255,255,0.1)'}`, borderRadius: '8px', color: filterEjecutivo ? '#10b981' : '#9ca3af', fontSize: '0.85rem', colorScheme: 'dark', minWidth: '180px' }}
+                    >
+                        <option value="" style={{ background: '#0a0a0b', color: 'white' }}>— Todos los ejecutivos —</option>
+                        {uniqueEjecutivos.map(e => (
+                            <option key={e} value={e} style={{ background: '#0a0a0b', color: 'white' }}>{e}</option>
+                        ))}
+                    </select>
+                )}
                 <label style={{ color: '#9ca3af', fontSize: '0.8rem' }}>Desde:</label>
                 <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={{ padding: '0.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white', fontSize: '0.85rem', colorScheme: 'dark' }} />
                 <label style={{ color: '#9ca3af', fontSize: '0.8rem' }}>Hasta:</label>
