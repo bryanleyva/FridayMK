@@ -210,7 +210,19 @@ function GestionarVentaModal({ venta, onClose, onSaved, backofficeUser }: { vent
     const [nuevoEstado, setNuevoEstado] = useState<'PENDIENTE' | 'ACTIVO' | 'RECHAZADO'>(estadoNorm);
     const [observacion, setObservacion] = useState(venta.observacionBo || '');
     const [motivoRechazo, setMotivoRechazo] = useState(venta.motivoRechazo || '');
+    const [fechaActivacion, setFechaActivacion] = useState('');
     const [saving, setSaving] = useState(false);
+
+    // Formatear YYYY-MM-DD → DD/MM/YYYY HH:mm:ss para guardar en el sheet
+    const formatFechaActivacion = (iso: string): string => {
+        if (!iso) return '';
+        const [y, m, d] = iso.split('-');
+        const now = new Date();
+        const hh = String(now.getHours()).padStart(2, '0');
+        const mm = String(now.getMinutes()).padStart(2, '0');
+        const ss = String(now.getSeconds()).padStart(2, '0');
+        return `${d}/${m}/${y}, ${hh}:${mm}:${ss}`;
+    };
 
     const handleSubmit = async () => {
         if (nuevoEstado === 'RECHAZADO' && !motivoRechazo.trim()) {
@@ -224,7 +236,8 @@ function GestionarVentaModal({ venta, onClose, onSaved, backofficeUser }: { vent
                 nuevoEstado,
                 backofficeUser,
                 observacion.trim(),
-                motivoRechazo.trim() || undefined
+                motivoRechazo.trim() || undefined,
+                nuevoEstado === 'ACTIVO' && fechaActivacion ? formatFechaActivacion(fechaActivacion) : undefined
             );
             if (res.success) {
                 await AppSwal.fire({ icon: 'success', title: 'Estado actualizado', timer: 1500, showConfirmButton: false });
@@ -281,6 +294,21 @@ function GestionarVentaModal({ venta, onClose, onSaved, backofficeUser }: { vent
                             })}
                         </div>
                     </div>
+
+                    {nuevoEstado === 'ACTIVO' && (
+                        <div>
+                            <label style={{ color: '#10b981', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.5rem' }}>
+                                Fecha de activación
+                                <span style={{ color: '#6b7280', fontWeight: 400, marginLeft: '0.4rem', textTransform: 'none' }}>(deja vacío para usar la fecha/hora actual)</span>
+                            </label>
+                            <input
+                                type="date"
+                                value={fechaActivacion}
+                                onChange={e => setFechaActivacion(e.target.value)}
+                                style={{ ...input, colorScheme: 'dark', borderColor: 'rgba(16,185,129,0.4)' }}
+                            />
+                        </div>
+                    )}
 
                     {nuevoEstado === 'RECHAZADO' && (
                         <div>

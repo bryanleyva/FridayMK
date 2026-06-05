@@ -587,7 +587,8 @@ export async function updateEstadoIngresadoR10(
     nuevoEstado: 'ACTIVO' | 'RECHAZADO' | 'PENDIENTE',
     backofficeUser: string,
     observacion?: string,
-    motivoRechazo?: string
+    motivoRechazo?: string,
+    fechaActivacionManual?: string
 ) {
     try {
         await loadDoc();
@@ -600,7 +601,10 @@ export async function updateEstadoIngresadoR10(
             return { success: false, error: 'Venta no encontrada' };
         }
 
-        const fechaActivacion = nuevoEstado === 'ACTIVO' ? getPeruTimestamp() : '';
+        // Usar fecha manual si viene, si no generar timestamp Perú
+        const fechaActivacion = nuevoEstado === 'ACTIVO'
+            ? (fechaActivacionManual || getPeruTimestamp())
+            : '';
         let lineasActualizadas = 0;
 
         for (const linea of lineas) {
@@ -608,7 +612,6 @@ export async function updateEstadoIngresadoR10(
             linea.set('MESA_CONTROL_ASIGNADO', backofficeUser);
             if (observacion !== undefined) linea.set('OBSERVACION_BO', observacion);
             if (nuevoEstado === 'RECHAZADO') {
-                // Siempre setear (aunque sea string vacío) para limpiar valor previo si se cambió de estado
                 linea.set('MOTIVO_RECHAZO', motivoRechazo || '');
             }
             if (nuevoEstado === 'ACTIVO') linea.set('FECHA_ACTIVACION', fechaActivacion);
