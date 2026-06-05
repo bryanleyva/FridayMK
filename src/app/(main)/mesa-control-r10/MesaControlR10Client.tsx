@@ -299,6 +299,8 @@ function GestionarVentaModal({ venta, onClose, onSaved, backofficeUser }: { vent
                         {[
                             ['Tipo ingreso', venta.tipoIngreso],
                             ['Canal', venta.canalVenta],
+                            ['Fecha cierre', venta.fechaCierre?.split(',')[0]],
+                            ['Fecha activación', venta.fechaActivacion ? venta.fechaActivacion.split(',')[0] : null],
                             ['Fecha nacimiento', venta.fechaNacimiento],
                             ['Estado civil', venta.estadoCivil],
                             ['Distrito nacimiento', venta.distritoNacimiento],
@@ -310,8 +312,8 @@ function GestionarVentaModal({ venta, onClose, onSaved, backofficeUser }: { vent
                             ['Líneas', venta.cantidadLineas],
                         ].map(([label, value]) => value ? (
                             <div key={label as string} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.04)', paddingBottom: '0.3rem' }}>
-                                <span style={{ color: '#6b7280', textTransform: 'uppercase', fontSize: '0.75rem' }}>{label}</span>
-                                <span style={{ color: 'white', fontWeight: 500 }}>{value}</span>
+                                <span style={{ color: label === 'Fecha activación' ? '#10b981' : '#6b7280', textTransform: 'uppercase', fontSize: '0.75rem', fontWeight: label === 'Fecha activación' ? 700 : 400 }}>{label}</span>
+                                <span style={{ color: label === 'Fecha activación' ? '#10b981' : 'white', fontWeight: 600 }}>{value}</span>
                             </div>
                         ) : null)}
                     </div>
