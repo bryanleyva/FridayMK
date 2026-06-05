@@ -25,7 +25,8 @@ export default function AdminTracking({ currentUserRole, currentUserName }: Prop
         return `${year}-${month}-${day}`;
     };
 
-    const [filterDate, setFilterDate] = useState<string>(getTodayString());
+    const [filterStartDate, setFilterStartDate] = useState<string>(getTodayString());
+    const [filterEndDate, setFilterEndDate] = useState<string>(getTodayString());
     const [useDateFilter, setUseDateFilter] = useState(true);
     const [filterStatus, setFilterStatus] = useState('');
     const [filterExecutive, setFilterExecutive] = useState('');
@@ -101,7 +102,10 @@ export default function AdminTracking({ currentUserRole, currentUserName }: Prop
         };
 
         const leadIsoDate = normalizeDate(trackingDate);
-        return leadIsoDate === filterDate;
+        if (!leadIsoDate) return false;
+        if (filterStartDate && leadIsoDate < filterStartDate) return false;
+        if (filterEndDate && leadIsoDate > filterEndDate) return false;
+        return true;
     });
 
     // Group by Executive (from filtered results)
@@ -459,10 +463,10 @@ export default function AdminTracking({ currentUserRole, currentUserName }: Prop
 
                         <div style={{ height: '4rem', width: '1px', backgroundColor: 'rgba(63, 63, 70, 0.8)', margin: '0 0.5rem' }}></div>
 
-                        {/* Date Filter */}
+                        {/* Date Range Filter */}
                         <div className="flex flex-col" style={{ gap: '0.75rem' }}>
-                            <label className="text-emerald-500/80" style={{ fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.2em', marginLeft: '0.5rem' }}>Fecha de Gestión</label>
-                            <div className="flex items-center" style={{ gap: '1.25rem' }}>
+                            <label className="text-emerald-500/80" style={{ fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.2em', marginLeft: '0.5rem' }}>Rango de Fechas</label>
+                            <div className="flex items-center" style={{ gap: '1rem' }}>
                                 <label className="switch-premium">
                                     <input
                                         type="checkbox"
@@ -472,21 +476,29 @@ export default function AdminTracking({ currentUserRole, currentUserName }: Prop
                                     />
                                     <span className="slider-premium"></span>
                                 </label>
-
-                                <div style={{ position: 'relative' }}>
-                                    <input
-                                        type="date"
-                                        value={filterDate}
-                                        onChange={(e) => setFilterDate(e.target.value)}
-                                        disabled={!useDateFilter}
-                                        className="custom-select-premium"
-                                        style={{
-                                            width: 'auto',
-                                            paddingRight: '1rem',
-                                            opacity: !useDateFilter ? '0.2' : '1',
-                                            cursor: !useDateFilter ? 'not-allowed' : 'pointer'
-                                        }}
-                                    />
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', opacity: !useDateFilter ? 0.2 : 1 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <span style={{ color: '#6b7280', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', minWidth: '32px' }}>Desde</span>
+                                        <input
+                                            type="date"
+                                            value={filterStartDate}
+                                            onChange={(e) => setFilterStartDate(e.target.value)}
+                                            disabled={!useDateFilter}
+                                            className="custom-select-premium"
+                                            style={{ width: 'auto', paddingRight: '1rem', cursor: !useDateFilter ? 'not-allowed' : 'pointer', colorScheme: 'dark' }}
+                                        />
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <span style={{ color: '#6b7280', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', minWidth: '32px' }}>Hasta</span>
+                                        <input
+                                            type="date"
+                                            value={filterEndDate}
+                                            onChange={(e) => setFilterEndDate(e.target.value)}
+                                            disabled={!useDateFilter}
+                                            className="custom-select-premium"
+                                            style={{ width: 'auto', paddingRight: '1rem', cursor: !useDateFilter ? 'not-allowed' : 'pointer', colorScheme: 'dark' }}
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </div>
