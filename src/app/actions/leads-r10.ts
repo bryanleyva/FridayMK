@@ -632,7 +632,7 @@ export async function updateEstadoIngresadoR10(
 // BASE R10: Upload Excel → BASE_R10 sheet
 // ============================================
 
-export async function uploadBaseR10Excel(base64: string): Promise<{ success: boolean; count?: number; error?: string }> {
+export async function uploadBaseR10Excel(base64: string): Promise<{ success: boolean; count?: number; added?: number; skipped?: number; error?: string }> {
     try {
         await loadDoc();
         const sheet = await ensureSheet('BASE_R10');
@@ -684,8 +684,14 @@ export async function uploadBaseR10Excel(base64: string): Promise<{ success: boo
         const existingIds = existingRows.map((r: any) => parseInt(r.get('ID') || '0')).filter((n: number) => !isNaN(n) && n > 0);
         let nextId = existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1;
 
+        // Construir set de DNIs existentes para evitar duplicados
+        const existingDnis = new Set(
+            existingRows.map((r: any) => (r.get('DNI') || '').toString().trim()).filter(Boolean)
+        );
+
         const fechaCarga = getPeruTimestamp();
-        let count = 0;
+        let added = 0;
+        let skipped = 0;
 
         const toAdd: any[] = [];
         worksheet.eachRow((row, rowNum) => {
@@ -693,6 +699,13 @@ export async function uploadBaseR10Excel(base64: string): Promise<{ success: boo
             const dni = getCol(row, ['DNI']);
             const nombre = getCol(row, ['NOMBRES_COMPLETOS', 'NOMBRES COMPLETOS', 'NOMBRE_COMPLETO', 'NOMBRE', 'NOMBRES']);
             if (!dni && !nombre) return;
+
+            // Saltar si el DNI ya existe en la hoja
+            if (dni && existingDnis.has(dni.trim())) {
+                skipped++;
+                return;
+            }
+
             toAdd.push({
                 'ID': String(nextId++),
                 'DNI': dni,
@@ -711,14 +724,15 @@ export async function uploadBaseR10Excel(base64: string): Promise<{ success: boo
                 'FECHA_ASIGNACION': '',
                 'CAMPAÑA': 'R10',
             });
-            count++;
+            if (dni) existingDnis.add(dni.trim());
+            added++;
         });
 
         for (const row of toAdd) {
             await sheet.addRow(row as any);
         }
 
-        return { success: true, count };
+        return { success: true, count: added, added, skipped };
     } catch (error: any) {
         console.error('Error en uploadBaseR10Excel:', error);
         return { success: false, error: error.message || 'Error al procesar el archivo' };

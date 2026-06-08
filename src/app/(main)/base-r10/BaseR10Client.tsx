@@ -85,7 +85,16 @@ export default function BaseR10Client({ userRole, userName, libreLeads, teamMemb
             const base64 = Buffer.from(buffer).toString('base64');
             const res = await uploadBaseR10Excel(base64);
             if (res.success) {
-                await AppSwal.fire({ icon: 'success', title: 'Base cargada', text: `${res.count} registros subidos correctamente`, timer: 3000, showConfirmButton: false });
+                await AppSwal.fire({
+                    icon: 'success',
+                    title: 'Base cargada',
+                    html: `<div style="text-align:left;line-height:1.8">
+                        <b>${res.added ?? res.count}</b> registros nuevos agregados<br/>
+                        <b>${res.skipped ?? 0}</b> duplicados omitidos
+                    </div>`,
+                    timer: 3500,
+                    showConfirmButton: false,
+                });
                 setUploadFile(null);
                 // Refresh libre list
                 startTransition(async () => {
