@@ -16,7 +16,6 @@ export default function AdminTracking({ currentUserRole, currentUserName }: Prop
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
     // Date Filter State
-    // Default to today's date in YYYY-MM-DD format (local time)
     const getTodayString = () => {
         const d = new Date();
         const year = d.getFullYear();
@@ -25,7 +24,16 @@ export default function AdminTracking({ currentUserRole, currentUserName }: Prop
         return `${year}-${month}-${day}`;
     };
 
-    const [filterStartDate, setFilterStartDate] = useState<string>(getTodayString());
+    const get30DaysAgoString = () => {
+        const d = new Date();
+        d.setDate(d.getDate() - 30);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const [filterStartDate, setFilterStartDate] = useState<string>(get30DaysAgoString());
     const [filterEndDate, setFilterEndDate] = useState<string>(getTodayString());
     const [useDateFilter, setUseDateFilter] = useState(true);
     const [filterStatus, setFilterStatus] = useState('');
@@ -85,24 +93,38 @@ export default function AdminTracking({ currentUserRole, currentUserName }: Prop
         const trackingDate = l.fechaFin || l.fechaInicio;
         if (!trackingDate) return false;
 
-        const normalizeDate = (str: string) => {
+        // Convierte cualquier formato de fecha a YYYY-MM-DD para comparar
+        const normalizeDate = (str: string): string | null => {
             try {
+                // Tomar solo la parte de fecha (antes de la coma si hay hora)
                 const datePart = str.split(',')[0].trim();
-                const parts = datePart.split(/[/.-]/).map(p => p.trim());
+                // Separar por /, - o .
+                const parts = datePart.split(/[\/\-\.]/).map(p => p.trim());
                 if (parts.length < 3) return null;
 
-                let d, m, y;
-                // Identify Year (4 digits)
-                if (parts[2].length === 4) { [d, m, y] = parts; }
-                else if (parts[0].length === 4) { [y, m, d] = parts; }
-                else return null;
+                let d: string, m: string, y: string;
+                if (parts[0].length === 4) {
+                    // Formato ISO: YYYY-MM-DD
+                    [y, m, d] = parts;
+                } else if (parts[2].length === 4) {
+                    // Formato DD/MM/YYYY
+                    [d, m, y] = parts;
+                } else {
+                    return null;
+                }
 
-                return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
-            } catch (e) { return null; }
+                // Validar rango básico
+                const di = parseInt(d), mi = parseInt(m), yi = parseInt(y);
+                if (isNaN(di) || isNaN(mi) || isNaN(yi)) return null;
+                if (mi < 1 || mi > 12 || di < 1 || di > 31) return null;
+
+                return `${y}-${String(mi).padStart(2, '0')}-${String(di).padStart(2, '0')}`;
+            } catch { return null; }
         };
 
         const leadIsoDate = normalizeDate(trackingDate);
-        if (!leadIsoDate) return false;
+        // Si no se puede parsear la fecha, incluir el lead (no excluir por error de parseo)
+        if (!leadIsoDate) return true;
         if (filterStartDate && leadIsoDate < filterStartDate) return false;
         if (filterEndDate && leadIsoDate > filterEndDate) return false;
         return true;
@@ -235,7 +257,7 @@ export default function AdminTracking({ currentUserRole, currentUserName }: Prop
                     l.provincia || "",
                     l.direccion || "",
                     l.estado || "PENDIENTE",
-                    l.fechaInicio || "",
+                    l.fechaFin || l.fechaInicio || "",
                     l.ejecutivo || "",
                     l.observacion || ""
                 ]);
