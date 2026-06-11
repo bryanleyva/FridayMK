@@ -186,7 +186,8 @@ export class LeadCache {
     }
 
     public getByRuc(ruc: string) {
-        return this.rows.find(r => r.get('RUC') === ruc);
+        const normalized = String(ruc).trim();
+        return this.rows.find(r => String(r.get('RUC') || '').trim() === normalized);
     }
 
     public getAll() {
