@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { getTouchedLeads } from '@/app/actions/leads';
+import { getTouchedLeads, getAllUsers } from '@/app/actions/leads';
 import { AppSwal } from '@/lib/sweetalert';
 
 interface Props {
@@ -38,15 +38,23 @@ export default function AdminTracking({ currentUserRole, currentUserName }: Prop
     const [useDateFilter, setUseDateFilter] = useState(true);
     const [filterStatus, setFilterStatus] = useState('');
     const [filterExecutive, setFilterExecutive] = useState('');
+    const [activeExecSet, setActiveExecSet] = useState<Set<string>>(new Set());
 
     const loadData = async () => {
         setLoading(true);
-        const res = await getTouchedLeads();
+        const [res, users] = await Promise.all([getTouchedLeads(), getAllUsers()]);
         if (res.success && res.data) {
             setLeads(res.data);
         } else {
             AppSwal.fire({ title: 'Error', text: 'Error al cargar datos', icon: 'error', confirmButtonColor: '#ef4444' });
         }
+        // Build set of active executive identifiers (code and full name, normalized)
+        const activeSet = new Set<string>();
+        users.filter(u => u.estado !== 'INACTIVO' && u.rol.toUpperCase() === 'STANDAR').forEach(u => {
+            if (u.user) activeSet.add(u.user.trim().toUpperCase());
+            if (u.nombre) activeSet.add(u.nombre.trim().toUpperCase());
+        });
+        setActiveExecSet(activeSet);
         setLoading(false);
     };
 
@@ -54,7 +62,7 @@ export default function AdminTracking({ currentUserRole, currentUserName }: Prop
         loadData();
     }, []);
 
-    // Derived lists for Dropdowns (based on permission)
+    // Derived lists for Dropdowns (based on permission + active status)
     const availableExecutives = Array.from(new Set(leads.map(l => {
         // Permission check for list population
         if (currentUserRole === 'SPECIAL') {
@@ -62,6 +70,8 @@ export default function AdminTracking({ currentUserRole, currentUserName }: Prop
             const currentName = (currentUserName || '').trim().toUpperCase();
             if (supervisorName !== currentName) return null;
         }
+        // Only include active executives (if set is loaded)
+        if (activeExecSet.size > 0 && !(activeExecSet.has((l.ejecutivo || '').trim().toUpperCase()))) return null;
         return l.ejecutivo;
     }).filter(Boolean))).sort();
 
