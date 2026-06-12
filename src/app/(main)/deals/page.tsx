@@ -31,16 +31,19 @@ export default async function ProspectosPage() {
         const isActive = (r: any) =>
             (r.get('ESTADO') || '').trim().toUpperCase() !== 'INACTIVO';
 
+        const isStandar = (r: any) =>
+            (r.get('ROL') || '').trim().toUpperCase() === 'STANDAR';
+
         if (userRole === 'SPECIAL') {
             teamMembers = userCache.getTeamForSupervisor(userName)
-                .filter(isActive)
+                .filter(r => isActive(r) && isStandar(r))
                 .map(r => ({
                     user: r.get('USER'),
                     name: r.get('NOMBRES COMPLETOS')
                 }));
         } else {
             teamMembers = userCache.getAll()
-                .filter(isActive)
+                .filter(r => isActive(r) && isStandar(r))
                 .map(r => ({
                     user: r.get('USER'),
                     name: r.get('NOMBRES COMPLETOS')
