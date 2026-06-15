@@ -87,13 +87,16 @@ export async function getUserByCredentials(username: string, password: string): 
         return null;
     }
 
-    // Generate and save new unique session token
-    const newToken = Math.random().toString(36).substring(2) + Date.now().toString(36);
-    userRow.set('SESSION_TOKEN', newToken);
-    await userRow.save();
+    // Reuse existing token if present to avoid invalidating other active sessions.
+    // Only generate a new token if there is none (first login or after darDeBajaUsuario cleared it).
+    const existingToken = userRow.get('SESSION_TOKEN');
+    const sessionToken = existingToken || (Math.random().toString(36).substring(2) + Date.now().toString(36));
 
-    // Trigger cache update so other threads see the new token faster
-    await cache.refresh();
+    if (!existingToken) {
+        userRow.set('SESSION_TOKEN', sessionToken);
+        await userRow.save();
+        await cache.refresh();
+    }
 
     return {
         DNI: userRow.get('DNI'),
@@ -104,7 +107,7 @@ export async function getUserByCredentials(username: string, password: string): 
         CARGO: userRow.get('CARGO'),
         SUPERVISOR: userRow.get('SUPERVISOR'),
         TELEFONO: userRow.get('TELEFONO'),
-        SESSION_TOKEN: newToken,
+        SESSION_TOKEN: sessionToken,
         FOTO: userRow.get('FOTO'),
         CAMPAÑA: userRow.get('CAMPAÑA') || '',
     };
@@ -115,9 +118,12 @@ export async function checkSessionToken(username: string, token: string): Promis
     await cache.ensureInitialized(); // Uses 15s TTL
 
     const userRow = cache.findUser(username);
-    if (!userRow) return false;
+    // Fail-open: if user not found (cache error / API quota hit), don't force logout
+    if (!userRow) return true;
 
     const currentToken = userRow.get('SESSION_TOKEN');
+    // Empty token means explicitly revoked (darDeBajaUsuario) → force logout
+    if (!currentToken) return false;
     return currentToken === token;
 }
 
