@@ -38,7 +38,7 @@ export default function AdminTracking({ currentUserRole, currentUserName }: Prop
     const [useDateFilter, setUseDateFilter] = useState(true);
     const [filterStatus, setFilterStatus] = useState('');
     const [filterExecutive, setFilterExecutive] = useState('');
-    const [activeExecSet, setActiveExecSet] = useState<Set<string>>(new Set());
+    const [inactiveExecSet, setInactiveExecSet] = useState<Set<string>>(new Set());
 
     const loadData = async () => {
         setLoading(true);
@@ -48,13 +48,13 @@ export default function AdminTracking({ currentUserRole, currentUserName }: Prop
         } else {
             AppSwal.fire({ title: 'Error', text: 'Error al cargar datos', icon: 'error', confirmButtonColor: '#ef4444' });
         }
-        // Build set of active executive identifiers (code and full name, normalized)
-        const activeSet = new Set<string>();
-        users.filter(u => u.estado !== 'INACTIVO' && u.rol.toUpperCase() === 'STANDAR').forEach(u => {
-            if (u.user) activeSet.add(u.user.trim().toUpperCase());
-            if (u.nombre) activeSet.add(u.nombre.trim().toUpperCase());
+        // Build set of INACTIVE user identifiers (code and full name, normalized) to exclude from dropdown
+        const inactiveSet = new Set<string>();
+        users.filter(u => u.estado === 'INACTIVO').forEach(u => {
+            if (u.user) inactiveSet.add(u.user.trim().toUpperCase());
+            if (u.nombre) inactiveSet.add(u.nombre.trim().toUpperCase());
         });
-        setActiveExecSet(activeSet);
+        setInactiveExecSet(inactiveSet);
         setLoading(false);
     };
 
@@ -70,8 +70,8 @@ export default function AdminTracking({ currentUserRole, currentUserName }: Prop
             const currentName = (currentUserName || '').trim().toUpperCase();
             if (supervisorName !== currentName) return null;
         }
-        // Only include active executives (if set is loaded)
-        if (activeExecSet.size > 0 && !(activeExecSet.has((l.ejecutivo || '').trim().toUpperCase()))) return null;
+        // Exclude executives explicitly marked as INACTIVO in USUARIOS
+        if (inactiveExecSet.has((l.ejecutivo || '').trim().toUpperCase())) return null;
         return l.ejecutivo;
     }).filter(Boolean))).sort();
 
