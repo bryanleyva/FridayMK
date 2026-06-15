@@ -232,10 +232,11 @@ export default function AdminTracking({ currentUserRole, currentUserName }: Prop
             const worksheet = workbook.addWorksheet('Seguimiento');
 
             // Headers
+            // A  B            C               D              E    F         G        H       I         J     K          L          M           N                 O           P
             const headerNames = [
                 "RUC", "RAZON SOCIAL", "OPERADOR ACTUAL", "REPRESENTANTE", "DNI", "TELEFONO",
-                "CORREO", "LINEAS", "SEGMENTO", "DISTRITO", "PROVINCIA",
-                "DIRECCION", "ESTADO", "ULTIMA ATENCION", "EJECUTIVO", "OBSERVACIONES"
+                "CORREO", "LINEAS", "SEGMENTO", "DEPARTAMENTO", "PROVINCIA",
+                "DISTRITO", "DIRECCION", "ESTADO", "ULTIMA ATENCION", "EJECUTIVO", "OBSERVACIONES"
             ];
             worksheet.addRow(headerNames);
 
@@ -263,8 +264,9 @@ export default function AdminTracking({ currentUserRole, currentUserName }: Prop
                     l.correo || "",
                     l.lineas || "0",
                     l.segmento || "",
-                    l.distrito || "",
+                    l.departamento || "",
                     l.provincia || "",
+                    l.distrito || "",
                     l.direccion || "",
                     l.estado || "PENDIENTE",
                     l.fechaFin || l.fechaInicio || "",
